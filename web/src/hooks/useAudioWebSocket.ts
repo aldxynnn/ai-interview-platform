@@ -37,6 +37,9 @@ export function useAudioWebSocket({
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
+    // A manual retry after a terminal failure starts a new retry budget. Automatic
+    // reconnects do not pass through a terminal message and keep their current budget.
+    if (sessionEndedRef.current) reconnectAttemptsRef.current = 0;
     sessionEndedRef.current = false;
     setConnectionState("connecting");
     const url = token
@@ -111,6 +114,8 @@ export function useAudioWebSocket({
               reconnectAttemptsRef.current = RECONNECT_DELAYS.length;
               onStateChange(outcome.state);
               if (outcome.failure) onError?.(outcome.failure);
+              // Close terminal sockets so a retry cannot hit a stale OPEN connection.
+              try { ws.close(); } catch { /* closing an already-closed socket is harmless */ }
               break;
             }
           }
