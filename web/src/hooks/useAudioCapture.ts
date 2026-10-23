@@ -17,33 +17,43 @@ export function useAudioCapture({ onFrame, onError }: UseAudioCaptureOptions) {
   const start = useCallback(async () => {
     if (isCapturing) return;
 
+    let stream: MediaStream | null = null;
+    let ctx: AudioContext | null = null;
+    let workletNode: AudioWorkletNode | null = null;
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true },
       });
       streamRef.current = stream;
 
-      const ctx = new AudioContext({ sampleRate: 16000 });
+      ctx = new AudioContext({ sampleRate: 16000 });
       audioCtxRef.current = ctx;
 
       await ctx.audioWorklet.addModule("/audio-worklet-processor.js");
 
-      const workletNode = new AudioWorkletNode(ctx, "pcm-processor");
-      workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
-        if (!mutedRef.current) {
-          onFrame(e.data);
-        }
-      };
+      workletNode = new AudioWorkletNode(ctx, "pcm-processor");
       workletNodeRef.current = workletNode;
+      workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+        if (!mutedRef.current) onFrame(e.data);
+      };
 
       const source = ctx.createMediaStreamSource(stream);
       source.connect(workletNode);
-
       setIsCapturing(true);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      console.error("[AudioCapture] Failed to start:", error.message);
+      // Do not leave the microphone or AudioContext open after a partial startup.
+      workletNode?.disconnect();
+      workletNodeRef.current = null;
+      stream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      if (ctx && ctx.state !== "closed") {
+        try { await ctx.close(); } catch { /* browser cleanup is best-effort */ }
+      }
+      audioCtxRef.current = null;
+      const error = err instanceof Error ? err : new Error("Unable to start microphone capture.");
       onError?.(error);
+      throw error;
     }
   }, [isCapturing, onFrame, onError]);
 
