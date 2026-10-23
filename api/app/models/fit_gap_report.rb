@@ -27,13 +27,14 @@ class FitGapReport < ApplicationRecord
       reload
 
       return false if complete? && !force
-      return false if pending? && updated_at > stale_after.ago && !force
-      return false if generating? && updated_at > stale_after.ago && !force
+      return false if pending? && generation_lease_fresh?(stale_after) && !force
+      return false if generating? && generation_lease_fresh?(stale_after) && !force
 
       update!(
         generation_status: "pending",
         generation_error: nil,
         generated_at: nil,
+        generation_started_at: Time.current,
         skill_comparisons: [],
         generation_version: generation_version + 1
       )
@@ -50,16 +51,21 @@ class FitGapReport < ApplicationRecord
       reload
       return false unless self.generation_version == generation_version.to_i
       return false if complete?
-      return false if generating? && updated_at > stale_after.ago
+      return false if generating? && generation_lease_fresh?(stale_after)
 
       claimed_version = generating? ? self.generation_version + 1 : self.generation_version
       update!(
         generation_status: "generating",
         generation_error: nil,
+        generation_started_at: Time.current,
         generation_version: claimed_version
       )
       claimed_version
     end
+  end
+
+  def generation_lease_fresh?(stale_after)
+    generation_started_at.present? && generation_started_at > stale_after.ago
   end
 
   def completed_report_has_comparison_array
