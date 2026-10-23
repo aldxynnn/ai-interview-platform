@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'active_support/core_ext/object/blank'
-
 RSpec.configure do |config|
   config.order = :random
   config.disable_monkey_patching!
