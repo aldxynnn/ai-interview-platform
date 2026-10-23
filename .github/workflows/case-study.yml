@@ -1,0 +1,39 @@
+name: Case Study Checks
+
+on:
+  push:
+    branches: [main, "feat/case-study"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  web:
+    name: Web tests and production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package.json
+      - run: npm install
+      - run: npm test
+      - run: npm run build
+
+  api:
+    name: API regression tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3.2"
+          bundler-cache: true
+      - run: bundle exec rspec
