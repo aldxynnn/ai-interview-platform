@@ -3,7 +3,7 @@
 require "rails_helper"
 
 RSpec.describe FitGapReport do
-  subject(:report) { described_class.allocate }
+  subject(:report) { described_class.new(generation_status: "failed", generation_version: 4, skill_comparisons: []) }
 
   before do
     allow(report).to receive(:with_lock) { |&block| block.call }
