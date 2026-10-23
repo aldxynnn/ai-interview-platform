@@ -85,8 +85,10 @@ module FitGap
     def find_portfolio_skill(skills, label, skill_id)
       # Prefer stable taxonomy IDs. If either record has no ID, fall back to a
       # case-insensitive label match; a blank label is never a valid match.
-      return skills.find { |skill| skill[:skill_id] == skill_id } if skill_id.present? &&
-        (match = skills.find { |skill| skill[:skill_id] == skill_id })
+      if skill_id.present?
+        match = skills.find { |skill| skill[:skill_id] == skill_id }
+        return match if match
+      end
 
       return nil if label.blank?
 
