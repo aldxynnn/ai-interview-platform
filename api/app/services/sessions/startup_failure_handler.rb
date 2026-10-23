@@ -25,7 +25,8 @@ module Sessions
           started_at: nil,
           ended_at: nil,
           duration_seconds: nil,
-          end_reason: nil
+          end_reason: nil,
+          gemini_resumption_token: nil
         )
         outcome = RETRYABLE
       end
