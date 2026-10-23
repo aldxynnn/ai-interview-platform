@@ -58,7 +58,38 @@ class AudioWebSocketMiddleware
     state.session = session
     connect_to_gemini(browser_ws, state)
   rescue StandardError => e
-    Rails.logger.error("[AudioWS] Exception in on:open: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}")
+    handle_startup_exception(browser_ws, state, e)
+  end
+
+  # Convert synchronous startup failures into a safe protocol message. Failures
+  # before any transcript is saved are retryable and must not generate a portfolio.
+  def handle_startup_exception(browser_ws, state, error)
+    Rails.logger.error("[AudioWS] Exception during startup: #{error.class}: #{error.message}\n#{error.backtrace&.first(5)&.join("\n")}")
+
+    unless state.session
+      send_json(browser_ws, type: 'error', code: 'interview_start_failed',
+                            message: 'We could not start the interview. Please contact the hiring team.',
+                            recoverable: false)
+      browser_ws.close
+      return
+    end
+
+    outcome = Sessions::StartupFailureHandler.new(state.session).call
+    if outcome == Sessions::StartupFailureHandler::RETRYABLE
+      send_json(browser_ws, type: 'error', code: 'interview_start_failed',
+                            message: 'We could not start the interview. Your answers have not been recorded. Please try again or contact the hiring team.',
+                            recoverable: true)
+    else
+      Sessions::EndHandler.new(state.session).call(reason: 'error') unless state.session.reload.ended?
+      send_json(browser_ws, type: 'session_ended', reason: 'error',
+                            message: 'We could not continue the interview. Please contact the hiring team to confirm your session status.')
+    end
+    browser_ws.close
+  rescue StandardError => handler_error
+    Rails.logger.error("[AudioWS] Could not persist startup failure state: #{handler_error.class}: #{handler_error.message}")
+    send_json(browser_ws, type: 'error', code: 'interview_start_failed',
+                          message: 'We could not start the interview. Please contact the hiring team.',
+                          recoverable: false)
     browser_ws.close
   end
 
@@ -384,9 +415,22 @@ class AudioWebSocketMiddleware
       schedule_gemini_reconnect(browser_ws, state, code)
     else
       Rails.logger.error("[AudioWS] Gemini reconnection failed after #{MAX_RECONNECT_ATTEMPTS} attempts")
-      Sessions::EndHandler.new(state.session).call(reason: 'error')
-      send_json(browser_ws, type: 'session_ended', reason: 'error',
-                            message: 'The session encountered a problem. Please contact the interviewer.')
+      if state.session_ready
+        Sessions::EndHandler.new(state.session).call(reason: 'error')
+        send_json(browser_ws, type: 'session_ended', reason: 'error',
+                              message: 'The interview connection failed. Please contact the hiring team to confirm your session status.')
+      else
+        outcome = Sessions::StartupFailureHandler.new(state.session).call
+        if outcome == Sessions::StartupFailureHandler::RETRYABLE
+          send_json(browser_ws, type: 'error', code: 'interview_start_failed',
+                                message: 'We could not start the interview. Your answers have not been recorded. Please try again or contact the hiring team.',
+                                recoverable: true)
+        else
+          Sessions::EndHandler.new(state.session).call(reason: 'error') unless state.session.reload.ended?
+          send_json(browser_ws, type: 'session_ended', reason: 'error',
+                                message: 'We could not continue the interview. Please contact the hiring team to confirm your session status.')
+        end
+      end
       browser_ws.close
     end
   end
@@ -750,7 +794,8 @@ class AudioWebSocketMiddleware
         Session.unscoped.where(tenant_id: tenant_id).find_by(id: session_id)
       end
     rescue StandardError => e
-      return [nil, "Authentication failed: #{e.message}"]
+      Rails.logger.warn("[AudioWS] Authentication failed: #{e.class}")
+      return [nil, "Authentication failed"]
     end
 
     return [nil, 'Session not found'] unless session
@@ -783,12 +828,13 @@ class AudioWebSocketMiddleware
                   :graceful_end_timer, :time_ceiling_timer,
                   :coverage_end_timer, :coverage_pending,
                   :last_ai_turn_ends_with_question, :wrap_up_injected,
-                  :waiting_for_candidate_response
+                  :waiting_for_candidate_response, :session_ready
 
     def initialize
       @turn_counter = 0
       @reconnect_attempts = 0
       @reconnecting = false
+      @session_ready = false
       @model_speaking = false
       @wrap_up_injected = false
       @last_ai_turn_ends_with_question = false
