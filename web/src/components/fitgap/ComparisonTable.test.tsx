@@ -51,13 +51,15 @@ describe("ComparisonTable", () => {
     render(<ComparisonTable comparisons={comparisons} />);
 
     const javascriptRow = screen.getByRole("row", { name: /JavaScript/ });
-    expect(within(javascriptRow).getByText("L3")).toBeInTheDocument();
+    expect(within(javascriptRow).getAllByText("L3")).toHaveLength(2);
     expect(within(javascriptRow).getByText("Match")).toBeInTheDocument();
 
     const rubyRow = screen.getByRole("row", { name: /Ruby/ });
     expect(within(rubyRow).getByText("L2")).toBeInTheDocument();
-    expect(within(rubyRow).getByText("Not assessed")).toBeInTheDocument();
-    expect(within(rubyRow).getByText("Not assessed")).not.toHaveClass("text-amber-700");
+    expect(within(rubyRow).getAllByText("Not assessed")).toHaveLength(2);
+    within(rubyRow).getAllByText("Not assessed").forEach((element) => {
+      expect(element).not.toHaveClass("text-amber-700");
+    });
     expect(within(rubyRow).getByText("—")).toBeInTheDocument();
   });
 
