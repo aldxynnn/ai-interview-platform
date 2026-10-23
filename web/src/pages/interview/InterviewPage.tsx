@@ -71,7 +71,7 @@ export default function InterviewPage() {
         setInterviewFailure({
           code: "candidate_info_failed",
           message: "We could not load the interview details. Check your connection or contact the hiring team.",
-          recoverable: false,
+          recoverable: true,
         });
         setInterviewState("failed");
       });
@@ -228,6 +228,18 @@ export default function InterviewPage() {
       ? "connected"
       : "reconnecting";
 
+  // The preflight is gated on candidate details to prevent Start from firing
+  // while sessionId is still null during a slow API response.
+  if (interviewState === "idle" && !candidateInfo) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-3" role="status">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" aria-hidden="true" />
+        <h2 className="text-lg font-semibold">Loading interview details</h2>
+        <p className="text-sm text-muted-foreground">Please wait while we prepare your interview.</p>
+      </div>
+    );
+  }
+
   // ── State A: Pre-start ──────────────────────────────────────────────────
   if (interviewState === "idle") {
     return (
@@ -280,16 +292,16 @@ export default function InterviewPage() {
         </p>
         {interviewFailure?.recoverable ? (
           <Button className="w-full" size="lg" onClick={() => {
+            if (interviewFailure?.code === "candidate_info_failed") {
+              window.location.reload();
+              return;
+            }
             setInterviewFailure(null);
             setInterviewState("idle");
           }}>
             Try again
           </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Please contact the hiring team to confirm your session status.
-          </p>
-        )}
+        ) : null}
       </div>
     );
   }
