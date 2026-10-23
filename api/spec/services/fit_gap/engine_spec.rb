@@ -122,6 +122,6 @@ RSpec.describe FitGap::Engine do
 
     expect(narratives[:culture]).to include("No culture or competency expectations")
     expect(narratives[:overall]).to include("not assessed skill(s)")
-    expect(narratives[:overall]).to include("human decision")
+    expect(narratives[:overall]).to include("hiring decision")
   end
 end
