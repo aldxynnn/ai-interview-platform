@@ -135,7 +135,7 @@ module Api
       private
 
       def set_session
-        @session = Session.find(params[:id])
+        @session = Session.where(tenant_id: current_tenant_id).find(params[:id])
       rescue ActiveRecord::RecordNotFound
         json_error("Session not found", :not_found)
       end
