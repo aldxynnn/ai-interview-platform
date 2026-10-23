@@ -61,8 +61,10 @@ module Api
         end
 
         vacancy_id = params[:vacancy_id]
-        if vacancy_id.present? && FitGapReport.where(portfolio_id: portfolio.id, vacancy_id: vacancy_id).none?
-          return json_error("Fit/gap report not found", :not_found)
+        if vacancy_id.present?
+          report = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy_id)
+          return json_error("Fit/gap report not found", :not_found) unless report
+          return json_error("Fit/gap report is not ready for export", :unprocessable_entity) unless report.complete?
         end
         export_data = build_export_json(portfolio, vacancy_id)
         send_data export_data.to_json, filename: "portfolio-#{portfolio.id}.json",
