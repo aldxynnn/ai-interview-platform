@@ -32,6 +32,7 @@ export default function InterviewPage() {
   const [interviewState, setInterviewState] = useState<InterviewState>("idle");
   const [interviewFailure, setInterviewFailure] = useState<InterviewFailure | null>(null);
   const [speaker, setSpeaker] = useState<InterviewSpeaker>(null);
+  const speakerRef = useRef<InterviewSpeaker>(null);
   const [transcript, setTranscript] = useState<Pick<TranscriptTurn, "speaker" | "text">[]>([]);
   const [hardwareCheckDone, setHardwareCheckDone] = useState(false); // kept for green banner
   const [connectionLostLong, setConnectionLostLong] = useState(false);
@@ -105,7 +106,7 @@ export default function InterviewPage() {
         connectionLostTimerRef.current = null;
       }
       setConnectionLostLong(false);
-      if (state === "active" && !micMutedRef.current) unmuteRef.current?.();
+      if (state === "active" && !micMutedRef.current && speakerRef.current !== "ai") unmuteRef.current?.();
     }
   }, []);
 
@@ -144,6 +145,7 @@ export default function InterviewPage() {
   }, [token, cancelDrain]);
 
   const handleSpeakerChange = useCallback((newSpeaker: InterviewSpeaker) => {
+    speakerRef.current = newSpeaker;
     if (newSpeaker === "ai") {
       setSpeaker("ai");
       muteRef.current?.();
