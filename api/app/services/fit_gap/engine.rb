@@ -175,7 +175,7 @@ module FitGap
     end
 
     def fallback_overall_narrative(counts)
-      "The comparison contains #{counts["match"]} match(es), #{counts["gap"]} gap(s), #{counts["exceed"]} skill(s) above the stated level, and #{counts["not_assessed"]} not-assessed skill(s). Not assessed does not mean unqualified; review evidence and context before any hiring decision."
+      "The comparison contains #{counts["match"]} match(es), #{counts["gap"]} gap(s), #{counts["exceed"]} skill(s) above the stated level, and #{counts["not_assessed"]} not assessed skill(s). Not assessed does not mean unqualified; human review of evidence and context is required before any hiring decision."
     end
 
     def persist_result!(comparisons, narratives)
