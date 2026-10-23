@@ -69,6 +69,8 @@ jobs:
         with:
           ruby-version: 3.3.2
           bundler-cache: true
+      - name: Prepare application schema
+        run: psql -h "$DB_HOST" -U "$DB_USERNAME" -d "$DB_NAME" -c 'CREATE SCHEMA IF NOT EXISTS ai_interview;'
       - name: Load database schema
         run: bundle exec rails db:schema:load
       - name: Run RSpec
