@@ -145,7 +145,7 @@ module Api
       end
 
       def scoped_vacancy(id)
-        Vacancy.find_by(id: id)
+        Vacancy.where(tenant_id: current_tenant_id).find_by(id: id)
       end
 
       def portfolio_json(portfolio)
