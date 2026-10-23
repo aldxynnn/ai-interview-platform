@@ -119,7 +119,7 @@ module FitGap
         # Do not log model responses, prompt content, exception text, or candidate data.
         Rails.logger.warn("[N13] Narrative fallback used (error_class=#{e.class.name})")
         {
-          culture: fallback_culture_narrative(counts),
+          culture: fallback_culture_narrative,
           overall: fallback_overall_narrative(counts)
         }
       end
@@ -164,7 +164,7 @@ module FitGap
       text.to_s.strip.truncate(2_000)
     end
 
-    def fallback_culture_narrative(counts)
+    def fallback_culture_narrative
       if @vacancy.culture_dimensions.blank? && @vacancy.competency_expectations.blank?
         "No culture or competency expectations were supplied for this role. Review the evidence and assessment context before drawing conclusions."
       else
