@@ -54,6 +54,8 @@ export default function FitGapReportPage() {
   const { id, sessionId, vacancyId } = useParams<{ id: string; sessionId: string; vacancyId: string }>();
   const [report, setReport] = useState<FitGapReport | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [portfolioPending, setPortfolioPending] = useState(false);
+  const currentSessionIdRef = useRef(sessionId);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -61,6 +63,43 @@ export default function FitGapReportPage() {
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const requestStarted = useRef(false);
+
+  useEffect(() => {
+    currentSessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  const fetchPortfolio = useCallback(async () => {
+    if (!sessionId) return;
+    const requestedSessionId = sessionId;
+
+    try {
+      const response = await sessionsApi.getPortfolio(Number(requestedSessionId));
+      if (currentSessionIdRef.current !== requestedSessionId) return;
+
+      const data = response.data as any;
+      if (data.portfolio) {
+        const nextPortfolio = data.portfolio as Portfolio;
+        setPortfolio(nextPortfolio);
+        setPortfolioPending(false);
+        setGenerating(["pending", "generating"].includes(nextPortfolio.generation_status));
+        setPageError(null);
+      } else if (data.status === "pending" || data.status === "generating") {
+        setPortfolioPending(true);
+        setGenerating(true);
+        setPageError(null);
+      } else {
+        setPortfolioPending(false);
+        setGenerating(false);
+        setPageError("No completed portfolio was found for this session.");
+      }
+    } catch (error: any) {
+      if (currentSessionIdRef.current !== requestedSessionId) return;
+      const retryable = !error?.response || error.response.status >= 500;
+      setPortfolioPending(retryable);
+      setGenerating(retryable);
+      setPageError(safeApiMessage(error, "Could not load the candidate portfolio."));
+    }
+  }, [sessionId]);
 
   const applyReportResponse = useCallback((data: ApiReportResponse) => {
     const nextReport = data.report ?? null;
@@ -102,43 +141,23 @@ export default function FitGapReportPage() {
   }, [portfolio, vacancyId, applyReportResponse]);
 
   useEffect(() => {
-    let cancelled = false;
     requestStarted.current = false;
     setLoading(true);
     setReport(null);
     setPortfolio(null);
+    setPortfolioPending(false);
     setPageError(null);
     setActionError(null);
     setGenerating(false);
 
-    sessionsApi.getPortfolio(Number(sessionId))
-      .then((response) => {
-        if (cancelled) return;
-        const data = response.data as any;
-        if (data.portfolio) {
-          setPortfolio(data.portfolio as Portfolio);
-          const status = data.portfolio.generation_status;
-          setGenerating(status === "pending" || status === "generating");
-        } else if (data.status === "pending" || data.status === "generating") {
-          setGenerating(true);
-        } else {
-          setPageError("No completed portfolio was found for this session.");
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) setPageError(safeApiMessage(error, "Could not load the candidate portfolio."));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [sessionId]);
+    void fetchPortfolio().finally(() => setLoading(false));
+  }, [sessionId, fetchPortfolio]);
 
   useEffect(() => {
     if (portfolio && !loading) void fetchReport();
   }, [portfolio, loading, fetchReport]);
 
+  usePolling(fetchPortfolio, 4000, portfolioPending && !portfolio);
   usePolling(fetchReport, 4000, generating && !!portfolio);
 
   const handleRegenerate = async () => {
@@ -243,7 +262,7 @@ export default function FitGapReportPage() {
         <div role="alert" className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <div className="flex-1"><p className="font-medium">Unable to show the report</p><p className="mt-1 text-muted-foreground">{pageError}</p></div>
-          <Button size="sm" variant="outline" onClick={() => void fetchReport()}>Retry</Button>
+          <Button size="sm" variant="outline" onClick={() => void (portfolio ? fetchReport() : fetchPortfolio())}>Retry</Button>
         </div>
       )}
       {actionError && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{actionError}</div>}
