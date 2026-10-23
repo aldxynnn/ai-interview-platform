@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'rspec'
 require 'active_support/core_ext/object/blank'
 
 RSpec.configure do |config|
