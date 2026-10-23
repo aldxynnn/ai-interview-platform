@@ -101,6 +101,37 @@ RSpec.describe FitGap::Engine do
     expect(comparison).to include(result: "match", candidate_level: 3)
   end
 
+  it "rejects a portfolio and vacancy from different tenants" do
+    engine = described_class.allocate
+    allow(engine).to receive(:portfolio).and_return(double(session: double(tenant_id: 7)))
+    engine.instance_variable_set(:@portfolio, double(session: double(tenant_id: 7)))
+    engine.instance_variable_set(:@vacancy, double(tenant_id: 9))
+
+    expect { engine.send(:assert_same_tenant!) }.to raise_error(ArgumentError, /same tenant/)
+  end
+
+  it "uses a safe human-review fallback when the narrative model times out" do
+    engine = described_class.allocate
+    vacancy = double(
+      "Vacancy",
+      role_title: "Frontend Engineer",
+      culture_dimensions: "Collaboration",
+      competency_expectations: "Communicate clearly"
+    )
+    client = double("GeminiClient")
+    allow(client).to receive(:generate_content).and_raise(Timeout::Error, "provider response with unsafe detail")
+    engine.instance_variable_set(:@vacancy, vacancy)
+    engine.instance_variable_set(:@gemini_client, client)
+
+    narratives = engine.send(:generate_narratives, [
+      { result: "gap", skill_label: "TypeScript", candidate_level: 2, expected_level: 4, delta: -2 }
+    ])
+
+    expect(narratives[:culture]).to include("does not independently validate")
+    expect(narratives[:overall]).to include("human review")
+    expect(narratives.to_s).not_to include("unsafe detail")
+  end
+
   it "falls back to explicit human-review narrative when the model returns malformed fields" do
     engine = described_class.allocate
     vacancy = double(
