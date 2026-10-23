@@ -46,7 +46,7 @@ module FitGap
         delta = candidate_level.nil? ? nil : candidate_level - expected_level
         result = if candidate_level.nil?
                    "not_assessed"
-                 elsif delta.zero? && false
+                 elsif delta.zero?
                    "match"
                  elsif delta.positive?
                    "exceed"
