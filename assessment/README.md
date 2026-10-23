@@ -108,20 +108,22 @@ Tests introduced:
 - `api/spec/services/sessions/startup_failure_handler_spec.rb`: retry only with no transcript/portfolio, never reset when transcript evidence exists, never reset after portfolio creation, and never reopen a terminal session.
 - `.github/workflows/case-study.yml`: runs web tests/build and API RSpec for changes to this branch and pull requests.
 
-**Verification status must be read from the linked GitHub Actions run for the latest commit.** A previously observed run passed the web test and production build jobs before the final microphone-state adjustment; the API job initially failed because the workflow attempted Bundler from the repository root. The workflow was then corrected to run `bundle install` inside `api/`. Do not represent the full change as verified until the latest run succeeds.
+**Verified on commit `acbfeee558fc34265703d89b15cd1a380145609f`.** [GitHub Actions run - all jobs passed](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40008594309). Evidence: Vitest **6 tests passed** (outcome contract: 5; hardware retry: 1), TypeScript + Vite production build passed (1,842 modules transformed), RSpec **4 examples, 0 failures**, and the Playwright screenshot job captured three real-app screenshots with deterministic API/WebSocket mocks. These screenshots validate presentation and protocol state mapping; they do not prove a live Gemini credential or saved candidate transcript. The `npm install` step reported 5 moderate and 2 critical audit findings. Dependency upgrades were not applied automatically because broad/force upgrades could change unrelated runtime behavior; record this as a separate dependency-triage item.
 
-### Seeded Fault Test
-After the regression suite is green, temporarily reintroduce the bug that maps `reason: "error"` to `complete`, run the web tests and confirm the regression test fails, then revert that single-line fault in a follow-up commit. Record both commit links and the failing test output here. This section must not be marked complete before that experiment is observed.
+### Seeded Fault Test - completed
+The fault was deliberately reintroduced in [commit `a4ca90b`](https://github.com/aldxynnn/ai-interview-platform/commit/a4ca90b1adb6ae3eefd798c1611ad830eefdce95), changing `session_ended` with reason `error` back to state `complete`. The [GitHub Actions run](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40008303401) failed exactly as intended: **1 failed, 5 passed** in the web tests. `tests/interviewSessionOutcome.test.ts` expected `state: "failed"` but received `state: "complete"`. This demonstrates the regression test detects the original defect, rather than only exercising the happy path.
+
+The injected fault was then removed in [revert commit `2cab00b`](https://github.com/aldxynnn/ai-interview-platform/commit/2cab00bc6ac046416f0b92bb0934c3ee1a5db3c4). The final branch was verified green, including the revert and the UI evidence workflow, in [run `40008594309`](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40008594309).
 
 ### AI Verification Moment
 An unconditional “reset any failed active session to pending” is tempting but unsafe: it can erase the distinction between a no-evidence startup failure and an interview with saved transcript turns. The implemented guard checks both transcript existence and portfolio existence while holding the session lock. The unit tests explicitly cover transcript and portfolio boundaries. This is the important human verification decision: the assistant may propose a recovery path, but the existing schema, lifecycle handler, and tests determine whether the change is safe.
 
 ## 8. Demo evidence and submission checklist
 
-- [ ] Screenshot: retryable startup error, including the Try again action.
-- [ ] Screenshot: non-retryable failure state and contact-the-hiring-team guidance.
-- [ ] Screenshot: normal completion state.
-- [ ] Screenshot: mobile/responsive error screen.
+- [x] Screenshot: retryable startup error, including Try again - `startup-failure-desktop.png`.
+- [ ] Screenshot: non-retryable failure state and contact-the-hiring-team guidance (the artifact currently includes the retryable path; add a separate fatal-path capture if needed).
+- [x] Screenshot: completion UI after a mocked normal session-ended event - `interview-complete-desktop.png`. This is a UI-state capture, not proof of persisted live candidate audio.
+- [x] Screenshot: mobile/responsive error screen - `startup-failure-mobile.png`.
 - [ ] 3-5 minute video recording, hosted at a shareable URL.
 - [ ] Link to the draft pull request from `feat/case-study` to upstream `main`.
 - [ ] Latest GitHub Actions test/build evidence.
