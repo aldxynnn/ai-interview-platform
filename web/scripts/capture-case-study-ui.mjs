@@ -76,6 +76,12 @@ async function preparePage({ viewport, scenario }) {
           message: "We could not start the interview. Your answers have not been recorded. Please try again or contact the hiring team.",
           recoverable: true,
         }));
+      } else if (message.type === "auth" && scenario === "fatal") {
+        socket.send(JSON.stringify({
+          type: "session_ended",
+          reason: "error",
+          message: "The interview connection failed. Please contact the hiring team to confirm your session status.",
+        }));
       } else if (message.type === "end_session" && scenario === "complete") {
         socket.send(JSON.stringify({ type: "session_ended", reason: "manual_candidate" }));
       }
@@ -120,6 +126,20 @@ try {
   await mobile.page.screenshot({ path: path.join(outputDir, "startup-failure-mobile.png"), fullPage: true });
   await mobile.context.close();
 
+  // Non-retryable failure: preserve the terminal status and point to human follow-up.
+  const fatal = await preparePage({
+    viewport: { width: 1440, height: 960 },
+    scenario: "fatal",
+  });
+  await startViaPreflight(fatal.page);
+  await fatal.page.getByRole("heading", { name: "Interview could not be completed" }).waitFor({ timeout: 15_000 });
+  await fatal.page.getByText(/Please contact the hiring team to confirm your session status/).first().waitFor();
+  if (await fatal.page.getByRole("button", { name: /try again/i }).count()) {
+    throw new Error("Fatal session failures must not offer an unsafe retry.");
+  }
+  await fatal.page.screenshot({ path: path.join(outputDir, "startup-failure-fatal-desktop.png"), fullPage: true });
+  await fatal.context.close();
+
   // Clean completion contract: only the explicit normal session-ended message shows success.
   const complete = await preparePage({
     viewport: { width: 1440, height: 960 },
@@ -133,7 +153,7 @@ try {
   await complete.page.screenshot({ path: path.join(outputDir, "interview-complete-desktop.png"), fullPage: true });
   await complete.context.close();
 
-  console.log("Captured 3 real-app screenshots with deterministic API/WebSocket mocks.");
+  console.log("Captured 4 real-app screenshots with deterministic API/WebSocket mocks.");
 } finally {
   await browser.close();
 }
