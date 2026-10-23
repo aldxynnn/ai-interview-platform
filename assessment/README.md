@@ -108,7 +108,7 @@ Tests introduced:
 - `api/spec/services/sessions/startup_failure_handler_spec.rb`: retry only with no transcript/portfolio, never reset when transcript evidence exists, never reset after portfolio creation, and never reopen a terminal session.
 - `.github/workflows/case-study.yml`: runs web tests/build and API RSpec for changes to this branch and pull requests.
 
-**Verified on commit `acbfeee558fc34265703d89b15cd1a380145609f`.** [GitHub Actions run - all jobs passed](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40008594309). Evidence: Vitest **6 tests passed** (outcome contract: 5; hardware retry: 1), TypeScript + Vite production build passed (1,842 modules transformed), RSpec **4 examples, 0 failures**, and the Playwright screenshot job captured three real-app screenshots with deterministic API/WebSocket mocks. These screenshots validate presentation and protocol state mapping; they do not prove a live Gemini credential or saved candidate transcript. The `npm install` step reported 5 moderate and 2 critical audit findings. Dependency upgrades were not applied automatically because broad/force upgrades could change unrelated runtime behavior; record this as a separate dependency-triage item.
+**Verified on commit `492016652e08ae9acb3e4a9e6441efaf30ecbf3e`.** [GitHub Actions run - all jobs passed](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40009424877). Evidence: Vitest **7 tests passed** (outcome contract: 5; hardware retry: 1; audio cleanup: 1), TypeScript + Vite production build passed (1,842 modules transformed), RSpec **4 examples, 0 failures**, and the Playwright screenshot job captured four real-app screenshots with deterministic API/WebSocket mocks: retryable startup failure, non-retryable failure, mobile failure, and clean completion UI. These screenshots validate the real React app rendering and protocol state mapping; they do not prove a live Gemini credential or persisted candidate transcript. The `npm install` step reported 5 moderate and 2 critical audit findings in this dependency graph. Dependency upgrades were not applied automatically because broad/force upgrades could change unrelated runtime behavior; dependency triage remains an explicit follow-up.
 
 ### Seeded Fault Test - completed
 The fault was deliberately reintroduced in [commit `a4ca90b`](https://github.com/aldxynnn/ai-interview-platform/commit/a4ca90b1adb6ae3eefd798c1611ad830eefdce95), changing `session_ended` with reason `error` back to state `complete`. The [GitHub Actions run](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40008303401) failed exactly as intended: **1 failed, 5 passed** in the web tests. `tests/interviewSessionOutcome.test.ts` expected `state: "failed"` but received `state: "complete"`. This demonstrates the regression test detects the original defect, rather than only exercising the happy path.
@@ -121,10 +121,10 @@ An unconditional “reset any failed active session to pending” is tempting bu
 ## 8. Demo evidence and submission checklist
 
 - [x] Screenshot: retryable startup error, including Try again - `startup-failure-desktop.png`.
-- [ ] Screenshot: non-retryable failure state and contact-the-hiring-team guidance (the artifact currently includes the retryable path; add a separate fatal-path capture if needed).
+- [x] Screenshot: non-retryable failure state and contact-the-hiring-team guidance - `startup-failure-fatal-desktop.png`.
 - [x] Screenshot: completion UI after a mocked normal session-ended event - `interview-complete-desktop.png`. This is a UI-state capture, not proof of persisted live candidate audio.
 - [x] Screenshot: mobile/responsive error screen - `startup-failure-mobile.png`.
-- [ ] 3-5 minute video recording, hosted at a shareable URL.
+- [ ] 3-5 minute video recording, hosted at a shareable URL. Use `assessment/demo-video-script.md`; no hosted video URL has been supplied yet.
 - [ ] Link to the draft pull request from `feat/case-study` to upstream `main`.
 - [ ] Latest GitHub Actions test/build evidence.
 - [ ] Seeded Fault Test failure and revert commit links.
