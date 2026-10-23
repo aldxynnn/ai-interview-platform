@@ -23,12 +23,14 @@ import { sessionsApi } from "@/services/sessions";
 import HardwareCheck from "@/components/HardwareCheck";
 import { CheckCircle, Mic, MicOff } from "lucide-react";
 import type { CandidateInfo, InterviewState, InterviewSpeaker, TranscriptTurn } from "@/types";
+import type { InterviewFailure } from "@/utils/interviewSessionOutcome";
 
 export default function InterviewPage() {
   const { token } = useParams<{ token: string }>();
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [interviewState, setInterviewState] = useState<InterviewState>("idle");
+  const [interviewFailure, setInterviewFailure] = useState<InterviewFailure | null>(null);
   const [speaker, setSpeaker] = useState<InterviewSpeaker>(null);
   const [transcript, setTranscript] = useState<Pick<TranscriptTurn, "speaker" | "text">[]>([]);
   const [hardwareCheckDone, setHardwareCheckDone] = useState(false); // kept for green banner
@@ -46,9 +48,25 @@ export default function InterviewPage() {
       .then((res) => {
         setCandidateInfo(res.data);
         setSessionId(res.data.session_id);
-        if (res.data.session_status === "ended") setInterviewState("complete");
+        if (res.data.session_status === "ended" && res.data.session_end_reason === "error") {
+          setInterviewFailure({
+            code: "session_failed",
+            message: "The interview did not finish successfully. Please contact the hiring team to confirm your session status.",
+            recoverable: false,
+          });
+          setInterviewState("failed");
+        } else if (res.data.session_status === "ended" || res.data.session_status === "failed") {
+          setInterviewState("complete");
+        }
       })
-      .catch(() => setInterviewState("complete"));
+      .catch(() => {
+        setInterviewFailure({
+          code: "candidate_info_failed",
+          message: "We could not load the interview details. Check your connection or contact the hiring team.",
+          recoverable: false,
+        });
+        setInterviewState("failed");
+      });
   }, [token]);
 
   const muteRef = useRef<(() => void) | null>(null);
@@ -130,7 +148,12 @@ export default function InterviewPage() {
     }
   }, [scheduleAfterPlayback]);
 
-  const { connect, send, sendJson, disconnect, connectionState } = useAudioWebSocket({
+  const handleInterviewFailure = useCallback((failure: InterviewFailure) => {
+    setInterviewFailure(failure);
+    setInterviewState("failed");
+  }, []);
+
+  const { connect, send, sendJson, connectionState } = useAudioWebSocket({
     sessionId: sessionId ?? 0,
     token,
     onAudioChunk: playChunk,
@@ -138,6 +161,7 @@ export default function InterviewPage() {
     onStateChange: handleStateChange,
     onSpeakerChange: handleSpeakerChange,
     onReconnected: handleReconnected,
+    onError: handleInterviewFailure,
   });
 
   const { start: startCapture, stop: stopCapture, mute, unmute } = useAudioCapture({
@@ -161,14 +185,24 @@ export default function InterviewPage() {
 
   const startInterview = useCallback(async () => {
     if (!sessionId) return;
+    setInterviewFailure(null);
     setInterviewState("connecting");
-    connect();
-    await startCapture();
-    // Start muted — only unmute when backend sends speaker_changed: candidate.
-    // This prevents mic audio from being sent during AI speech, since separate
-    // AudioContexts for capture/playback break the browser's echo cancellation.
-    muteRef.current?.();
-  }, [sessionId, connect, startCapture]);
+    // Open the microphone before the backend session. A permission or AudioWorklet
+    // failure must never create an active interview that the candidate did not enter.
+    try {
+      muteRef.current?.();
+      await startCapture();
+      connect();
+    } catch {
+      stopCapture();
+      setInterviewFailure({
+        code: "audio_capture_failed",
+        message: "We could not access your microphone. Check browser permissions and try again.",
+        recoverable: true,
+      });
+      setInterviewState("failed");
+    }
+  }, [sessionId, connect, startCapture, stopCapture]);
 
   const endInterview = useCallback(async () => {
     setInterviewState("ending");
@@ -176,9 +210,7 @@ export default function InterviewPage() {
     stopCapture();
     stopPlayback();
     sendJson({ type: "end_session" });
-    disconnect();
-    setInterviewState("complete");
-  }, [stopCapture, stopPlayback, sendJson, disconnect]);
+  }, [stopCapture, stopPlayback, sendJson]);
 
   const wsConnectionStatus =
     interviewState === "reconnecting"
@@ -221,6 +253,33 @@ export default function InterviewPage() {
               Start Interview
             </Button>
           </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── State F: Failed ─────────────────────────────────────────────────────
+  if (interviewState === "failed") {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-700" aria-hidden="true">
+          <span className="text-2xl">!</span>
+        </div>
+        <h2 className="text-xl font-semibold">Interview could not be completed</h2>
+        <p role="alert" className="text-sm text-muted-foreground">
+          {interviewFailure?.message ?? "Something went wrong with the interview connection."}
+        </p>
+        {interviewFailure?.recoverable ? (
+          <Button className="w-full" size="lg" onClick={() => {
+            setInterviewFailure(null);
+            setInterviewState("idle");
+          }}>
+            Try again
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Please contact the hiring team to confirm your session status.
+          </p>
         )}
       </div>
     );
@@ -284,7 +343,9 @@ export default function InterviewPage() {
 
       {/* Voice indicator */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
-        {interviewState === "connecting" ? (
+        {interviewState === "ending" ? (
+          <div className="text-sm text-muted-foreground animate-pulse">Ending interview...</div>
+        ) : interviewState === "connecting" ? (
           <div className="text-sm text-muted-foreground animate-pulse">Connecting...</div>
         ) : interviewState === "draining_audio" ? (
           <div className="flex flex-col items-center gap-2 text-center">
