@@ -60,7 +60,7 @@ describe("ComparisonTable", () => {
     within(rubyRow).getAllByText("Not assessed").forEach((element) => {
       expect(element).not.toHaveClass("text-amber-700");
     });
-    expect(within(rubyRow).getByText("—")).toBeInTheDocument();
+    expect(within(rubyRow).getAllByText("—")).toHaveLength(2);
   });
 
   it("shows confidence and calls out assessor-adjusted values", () => {
