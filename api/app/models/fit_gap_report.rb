@@ -7,7 +7,9 @@ class FitGapReport < ApplicationRecord
   belongs_to :portfolio
   belongs_to :vacancy
 
-  validates :skill_comparisons, presence: true
+  # Empty comparisons are a valid state only while queued/running/failed.
+  # A completed report must always contain its deterministic result set.
+  validates :skill_comparisons, presence: true, if: :complete?
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
   validates :generation_version, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
