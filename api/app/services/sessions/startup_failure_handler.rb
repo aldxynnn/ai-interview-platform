@@ -18,7 +18,7 @@ module Sessions
       @session.with_lock do
         next unless %w[pending active].include?(@session.status)
         next if @session.transcript_turns.exists?
-        next if @session.portfolio.present?
+        next if @session.portfolio
 
         @session.update!(
           status: 'pending',
