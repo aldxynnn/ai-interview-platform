@@ -103,7 +103,6 @@ RSpec.describe FitGap::Engine do
 
   it "rejects a portfolio and vacancy from different tenants" do
     engine = described_class.allocate
-    allow(engine).to receive(:portfolio).and_return(double(session: double(tenant_id: 7)))
     engine.instance_variable_set(:@portfolio, double(session: double(tenant_id: 7)))
     engine.instance_variable_set(:@vacancy, double(tenant_id: 9))
 
