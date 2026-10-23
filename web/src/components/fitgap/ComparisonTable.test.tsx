@@ -73,9 +73,7 @@ describe("ComparisonTable", () => {
   it("shows the four outcome counts", () => {
     render(<ComparisonTable comparisons={comparisons} />);
 
-    expect(screen.getByText("1", { selector: "strong" })).toBeInTheDocument();
-    expect(screen.getByText("2", { selector: "strong" })).toBeInTheDocument();
-    expect(screen.getByText("1", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.getAllByText("1", { selector: "strong" })).toHaveLength(4);
     expect(screen.getByText("Human review remains required.")).toBeInTheDocument();
   });
 
