@@ -416,7 +416,7 @@ class AudioWebSocketMiddleware
       schedule_gemini_reconnect(browser_ws, state, code)
     else
       Rails.logger.error("[AudioWS] Gemini reconnection failed after #{MAX_RECONNECT_ATTEMPTS} attempts")
-      if state.session_ready
+      if state.session_ready && (state.turn_counter.to_i.positive? || state.session.transcript_turns.exists?)
         Sessions::EndHandler.new(state.session).call(reason: 'error')
         send_json(browser_ws, type: 'session_ended', reason: 'error',
                               message: 'The interview connection failed. Please contact the hiring team to confirm your session status.')
@@ -551,7 +551,7 @@ class AudioWebSocketMiddleware
         ActiveRecord::Base.connection_pool.with_connection do
           current_session = state.session.reload
           unless current_session.ended?
-            if state.session_ready
+            if state.session_ready && (state.turn_counter.to_i.positive? || current_session.transcript_turns.exists?)
               Rails.logger.info("[AudioWS] Grace period expired — ending session #{state.session.id}")
               Sessions::EndHandler.new(current_session).call(reason: 'error')
             else
