@@ -55,7 +55,14 @@ export default function InterviewPage() {
             recoverable: false,
           });
           setInterviewState("failed");
-        } else if (res.data.session_status === "ended" || res.data.session_status === "failed") {
+        } else if (res.data.session_status === "failed") {
+          setInterviewFailure({
+            code: "session_failed",
+            message: "The interview did not finish successfully. Please contact the hiring team to confirm your session status.",
+            recoverable: false,
+          });
+          setInterviewState("failed");
+        } else if (res.data.session_status === "ended") {
           setInterviewState("complete");
         }
       })
