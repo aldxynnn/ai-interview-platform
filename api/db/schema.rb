@@ -92,6 +92,7 @@ ActiveRecord::Schema[7.0].define(version: 2026_10_24_000000) do
     t.string "generation_status", default: "complete", null: false
     t.text "generation_error"
     t.integer "generation_version", default: 0, null: false
+    t.datetime "generation_started_at"
     t.index ["portfolio_id", "vacancy_id"], name: "index_fit_gap_reports_on_portfolio_id_and_vacancy_id", unique: true
     t.check_constraint "generation_status IN ('pending', 'generating', 'complete', 'failed')", name: "chk_fit_gap_reports_generation_status"
     t.check_constraint "generation_version >= 0", name: "chk_fit_gap_reports_generation_version"
