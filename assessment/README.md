@@ -103,17 +103,18 @@ No migration was added: existing enums already contain `pending`, `ended`, `fail
 ## 7. Automated verification
 
 Tests introduced:
+- `web/tests/useAudioCapture.test.ts`: verifies a failed AudioWorklet setup stops microphone tracks, closes AudioContext, notifies the error handler, and never leaves capture active.
 - `web/tests/interviewSessionOutcome.test.ts`: error outcome stays failed, normal completion stays complete, recoverability is preserved, missing messages use safe copy, and non-terminal messages are ignored.
 - `web/tests/HardwareCheck.test.tsx`: a failed internet check followed by Retry reruns OS/browser and internet checks, then reaches the enabled Start Interview state.
 - `api/spec/services/sessions/startup_failure_handler_spec.rb`: retry only with no transcript/portfolio, never reset when transcript evidence exists, never reset after portfolio creation, and never reopen a terminal session.
 - `.github/workflows/case-study.yml`: runs web tests/build and API RSpec for changes to this branch and pull requests.
 
-**Verified on commit `492016652e08ae9acb3e4a9e6441efaf30ecbf3e`.** [GitHub Actions run - all jobs passed](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40009424877). Evidence: Vitest **7 tests passed** (outcome contract: 5; hardware retry: 1; audio cleanup: 1), TypeScript + Vite production build passed (1,842 modules transformed), RSpec **4 examples, 0 failures**, and the Playwright screenshot job captured four real-app screenshots with deterministic API/WebSocket mocks: retryable startup failure, non-retryable failure, mobile failure, and clean completion UI. These screenshots validate the real React app rendering and protocol state mapping; they do not prove a live Gemini credential or persisted candidate transcript. The `npm install` step reported 5 moderate and 2 critical audit findings in this dependency graph. Dependency upgrades were not applied automatically because broad/force upgrades could change unrelated runtime behavior; dependency triage remains an explicit follow-up.
+**Verified on commit `9fcf3f6b4a9e3d42184efd54d5a724ccce655094`.** [GitHub Actions run - all jobs passed](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40009618650). Evidence: Vitest **7 tests passed** (outcome contract: 5; hardware retry: 1; audio cleanup: 1), TypeScript + Vite production build passed (1,842 modules transformed), RSpec **4 examples, 0 failures**, and the Playwright screenshot job captured four real-app screenshots with deterministic API/WebSocket mocks: retryable startup failure, non-retryable failure, mobile failure, and clean completion UI. These screenshots validate the real React app rendering and protocol state mapping; they do not prove a live Gemini credential or persisted candidate transcript. The `npm install` step reported 5 moderate and 2 critical audit findings in this dependency graph. Dependency upgrades were not applied automatically because broad/force upgrades could change unrelated runtime behavior; dependency triage remains an explicit follow-up.
 
 ### Seeded Fault Test - completed
 The fault was deliberately reintroduced in [commit `a4ca90b`](https://github.com/aldxynnn/ai-interview-platform/commit/a4ca90b1adb6ae3eefd798c1611ad830eefdce95), changing `session_ended` with reason `error` back to state `complete`. The [GitHub Actions run](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40008303401) failed exactly as intended: **1 failed, 5 passed** in the web tests. `tests/interviewSessionOutcome.test.ts` expected `state: "failed"` but received `state: "complete"`. This demonstrates the regression test detects the original defect, rather than only exercising the happy path.
 
-The injected fault was then removed in [revert commit `2cab00b`](https://github.com/aldxynnn/ai-interview-platform/commit/2cab00bc6ac046416f0b92bb0934c3ee1a5db3c4). The final branch was verified green, including the revert and the UI evidence workflow, in [run `40008594309`](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40008594309).
+The injected fault was then removed in [revert commit `2cab00b`](https://github.com/aldxynnn/ai-interview-platform/commit/2cab00bc6ac046416f0b92bb0934c3ee1a5db3c4). The final branch after the fault revert was verified green, including UI evidence capture, in [run `40009618650`](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40009618650).
 
 ### AI Verification Moment
 An unconditional “reset any failed active session to pending” is tempting but unsafe: it can erase the distinction between a no-evidence startup failure and an interview with saved transcript turns. The implemented guard checks both transcript existence and portfolio existence while holding the session lock. The unit tests explicitly cover transcript and portfolio boundaries. This is the important human verification decision: the assistant may propose a recovery path, but the existing schema, lifecycle handler, and tests determine whether the change is safe.
@@ -126,7 +127,7 @@ An unconditional “reset any failed active session to pending” is tempting bu
 - [x] Screenshot: mobile/responsive error screen - `startup-failure-mobile.png`.
 - [ ] 3-5 minute video recording, hosted at a shareable URL. Use `assessment/demo-video-script.md`; no hosted video URL has been supplied yet.
 - [ ] Link to the draft pull request from `feat/case-study` to upstream `main`.
-- [ ] Latest GitHub Actions test/build evidence.
+- [x] Latest GitHub Actions test/build evidence: [green run `40009618650`](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40009618650).
 - [ ] Seeded Fault Test failure and revert commit links.
 
 Suggested video sequence: (1) explain the P1 false-completion problem, (2) show the original state-mapping defect, (3) demonstrate a retryable startup error using a missing/invalid Gemini key in a local development environment, (4) show clean completion remains successful, (5) show test results and the fault/revert evidence, (6) explain why reset is allowed only before transcript/portfolio evidence exists.
@@ -134,5 +135,5 @@ Suggested video sequence: (1) explain the P1 false-completion problem, (2) show 
 ## 9. Open risks / known limitations
 
 - Live Gemini failure injection was not run by the assistant. Use a local development environment and test credential handling safely; never commit a real API key.
-- Candidate-flow screenshots and the demo recording still need to be captured from the running application; generated mock visuals should not be presented as real product evidence.
+- Four candidate-flow screenshots were captured from the production-built React app with deterministic API/WebSocket mocks and embedded in the report. They do not represent a real Gemini session or persisted transcript. The owner-recorded demo video remains outstanding.
 - The case-study PDF states a deadline of 19 August 2026 at 13:00 WIB, while the hiring portal was reported as showing 28 October 2026. Confirm the authoritative submission deadline in the portal/recruiter instructions.
