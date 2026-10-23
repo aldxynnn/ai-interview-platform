@@ -106,6 +106,7 @@ export default function FitGapReportPage() {
     requestStarted.current = false;
     setLoading(true);
     setReport(null);
+    setPortfolio(null);
     setPageError(null);
     setActionError(null);
     setGenerating(false);
