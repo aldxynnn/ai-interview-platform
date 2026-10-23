@@ -7,9 +7,9 @@ class FitGapReport < ApplicationRecord
   belongs_to :portfolio
   belongs_to :vacancy
 
-  # Empty comparisons are a valid state only while queued/running/failed.
-  # A completed report must always contain its deterministic result set.
-  validates :skill_comparisons, presence: true, if: :complete?
+  # A completed report must contain a JSON array. An empty array is valid when
+  # the vacancy has no configured skills; that condition is handled in the UI.
+  validate :completed_report_has_comparison_array, if: :complete?
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
   validates :generation_version, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
@@ -60,6 +60,10 @@ class FitGapReport < ApplicationRecord
       )
       claimed_version
     end
+  end
+
+  def completed_report_has_comparison_array
+    errors.add(:skill_comparisons, "must be an array") unless skill_comparisons.is_a?(Array)
   end
 
   def mark_generation_failed!(generation_version:, exception_class:)
