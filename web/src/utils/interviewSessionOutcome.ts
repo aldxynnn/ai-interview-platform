@@ -27,8 +27,9 @@ export function resolveInterviewOutcome(
 ): InterviewOutcome | null {
   if (message.type === "session_ended") {
     if (message.reason === "error") {
+      // SEEDED FAULT (temporary): reproduce the original false-success regression.
       return {
-        state: "failed",
+        state: "complete",
         terminal: true,
         failure: {
           code: message.code ?? "session_failed",
