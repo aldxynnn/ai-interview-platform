@@ -354,6 +354,7 @@ class AudioWebSocketMiddleware
 
   def build_on_ready(browser_ws, state, session)
     lambda {
+      state.session_ready = true
       state.logged_not_ready = false
       if state.reconnecting
         Rails.logger.info("[AudioWS] Gemini reconnected for session #{session.id}")
@@ -548,10 +549,16 @@ class AudioWebSocketMiddleware
     state.graceful_end_timer = EM::Timer.new(BROWSER_GRACE_PERIOD) do
       Thread.new do
         ActiveRecord::Base.connection_pool.with_connection do
-          next if state.session.reload.ended?
-
-          Rails.logger.info("[AudioWS] Grace period expired — ending session #{state.session.id}")
-          Sessions::EndHandler.new(state.session).call(reason: 'error')
+          current_session = state.session.reload
+          unless current_session.ended?
+            if state.session_ready
+              Rails.logger.info("[AudioWS] Grace period expired — ending session #{state.session.id}")
+              Sessions::EndHandler.new(current_session).call(reason: 'error')
+            else
+              Rails.logger.info("[AudioWS] Browser left before Gemini became ready — resetting session #{state.session.id}")
+              Sessions::StartupFailureHandler.new(current_session).call
+            end
+          end
           EM.schedule { state.gemini_client&.close }
         end
       rescue StandardError => e
