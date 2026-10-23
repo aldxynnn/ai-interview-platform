@@ -13,9 +13,11 @@
 
 ## 2. Runtime status: be precise
 
-Direct cloning from this execution environment failed because DNS/network access to GitHub was unavailable. Edits were therefore committed through the connected GitHub service to `feat/trustworthy-fit-gap`, but the full application was not launched locally here. Adding a CI workflow is not the same as a green CI run.
+Direct cloning from this execution environment failed because DNS/network access to GitHub was unavailable. Edits were therefore committed through the connected GitHub service to `feat/trustworthy-fit-gap`, but the full application was not launched locally here.
 
-**Do not describe tests/build as passed until you have a green result from GitHub Actions or from your own runtime.** If CI fails, fix the root cause in a new commit; do not weaken assertions.
+The first GitHub Actions run exposed two real issues: frontend test queries/DOM cleanup and a Rails Zeitwerk naming mismatch in WebSocket middleware filenames. Frontend setup and query assertions were corrected without removing assertions. The middleware files and initializer paths were renamed to align with their declared constants. A subsequent CI run must confirm that API boot and RSpec now complete.
+
+**The frontend component tests and production build passed in CI run 40026191073. The API RSpec job failed before examples ran on the old middleware filenames; do not claim backend tests passed until a run on the latest branch head is green.** If CI fails, fix the root cause in a new commit; do not weaken assertions.
 
 ## 3. Local verification commands
 
