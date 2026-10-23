@@ -27,12 +27,14 @@ class FitGapGeneratorWorker
       report: report,
       generation_version: claimed_version
     ).call
-  rescue ActiveRecord::RecordNotFound
+  rescue ActiveRecord::RecordNotFound => e
+    report&.mark_generation_failed!(generation_version: claimed_version || generation_version, exception_class: e.class.name)
     Rails.logger.warn("[N13] FitGapGeneratorWorker record not found")
   rescue StandardError => e
     report&.mark_generation_failed!(generation_version: claimed_version || generation_version, exception_class: e.class.name)
     Rails.logger.error(
-      "[N13] FitGapGeneratorWorker failed for report=#{report_id} "       "version=#{generation_version} error_class=#{e.class.name}"
+      "[N13] FitGapGeneratorWorker failed for report=#{report_id} " \
+      "version=#{generation_version} error_class=#{e.class.name}"
     )
     raise
   end
