@@ -20,7 +20,8 @@ RSpec.describe Sessions::StartupFailureHandler do
         started_at: Time.utc(2026, 1, 1),
         ended_at: nil,
         duration_seconds: nil,
-        end_reason: 'error'
+        end_reason: 'error',
+        gemini_resumption_token: 'stale-token'
       }
       @transcript_turns = FakeTranscriptRelation.new(has_transcript: has_transcript)
       @portfolio = portfolio
