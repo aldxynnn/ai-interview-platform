@@ -31,6 +31,7 @@ RSpec.describe FitGapReport do
       generation_status: "pending",
       generation_error: nil,
       generated_at: nil,
+      generation_started_at: anything,
       skill_comparisons: [],
       generation_version: 5
     )
