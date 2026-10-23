@@ -41,8 +41,10 @@ class FitGapReport < ApplicationRecord
     end
   end
 
-  # Only a job that still owns the current generation version may start.
-  # The timeout allows recovery after a worker is terminated unexpectedly.
+  # Only one job may own a generation. Returns the version the caller now owns,
+  # or false when another current worker has already claimed/completed it.
+  # Taking over a stale lease increments the version so the old worker cannot
+  # overwrite the new worker's result if it eventually finishes.
   def claim_execution!(generation_version:, stale_after: 15.minutes)
     with_lock do
       reload
@@ -50,8 +52,13 @@ class FitGapReport < ApplicationRecord
       return false if complete?
       return false if generating? && updated_at > stale_after.ago
 
-      update!(generation_status: "generating", generation_error: nil)
-      true
+      claimed_version = generating? ? self.generation_version + 1 : self.generation_version
+      update!(
+        generation_status: "generating",
+        generation_error: nil,
+        generation_version: claimed_version
+      )
+      claimed_version
     end
   end
 
