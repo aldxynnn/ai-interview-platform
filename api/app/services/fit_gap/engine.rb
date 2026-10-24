@@ -1,149 +1,215 @@
 # frozen_string_literal: true
 
 module FitGap
-  # N13: Generates a fit/gap report comparing a portfolio against a vacancy.
-  # Uses rule-based comparison for skill levels + Gemini Flash for culture narrative.
+  # N13: Produces a deterministic skill comparison and an explicitly advisory
+  # AI narrative. Numeric levels and result categories never depend on the LLM.
   class Engine
-    def initialize(portfolio:, vacancy:, gemini_client: nil)
+    def initialize(portfolio:, vacancy:, gemini_client: nil, report: nil, generation_version: nil)
       @portfolio = portfolio
-      @vacancy   = vacancy
+      @vacancy = vacancy
+      @report = report
+      @generation_version = generation_version
       @gemini_client = gemini_client || Gemini::HttpClient.new(
-        model:   ENV.fetch('GEMINI_FLASH_MODEL', 'gemini-2.0-flash-001'),
+        model: ENV.fetch("GEMINI_FLASH_MODEL", "gemini-2.0-flash-001"),
         timeout: 30
       )
     end
 
-    # Returns the FitGapReport record.
     def call
-      skill_comparisons = build_skill_comparisons
-      narratives        = generate_narratives(skill_comparisons)
+      assert_same_tenant!
+      comparisons = build_skill_comparisons
+      narratives = generate_narratives(comparisons)
 
-      report = FitGapReport.find_or_initialize_by(
-        portfolio_id: @portfolio.id,
-        vacancy_id:   @vacancy.id
-      )
-
-      report.update!(
-        skill_comparisons: skill_comparisons,
-        culture_narrative: narratives[:culture],
-        overall_narrative: narratives[:overall],
-        generated_at:      Time.current
-      )
-
-      Rails.logger.info("[N13] Fit/gap report generated: portfolio=#{@portfolio.id} vacancy=#{@vacancy.id}")
-      report
+      persist_result!(comparisons, narratives)
+      @report || FitGapReport.find_by!(portfolio_id: @portfolio.id, vacancy_id: @vacancy.id)
     end
 
     private
 
-    def build_skill_comparisons
-      vacancy_skills = @vacancy.vacancy_skills.index_by(&:skill_label)
-      portfolio_skills = effective_portfolio_skills  # includes overrides
-
-      comparisons = vacancy_skills.map do |label, vacancy_skill|
-        portfolio_skill = find_portfolio_skill(portfolio_skills, label, vacancy_skill.skill_id)
-
-        if portfolio_skill
-          candidate_level  = portfolio_skill[:effective_level]
-          expected_level   = vacancy_skill.expected_level
-          delta            = candidate_level - expected_level
-          result           = delta == 0 ? 'match' : (delta > 0 ? 'exceed' : 'gap')
-        else
-          candidate_level = nil
-          expected_level  = vacancy_skill.expected_level
-          delta           = nil
-          result          = 'not_assessed'
-        end
-
-        {
-          skill_label:     label,
-          skill_id:        vacancy_skill.skill_id,
-          candidate_level: candidate_level,
-          expected_level:  expected_level,
-          result:          result,
-          delta:           delta,
-          confidence:      portfolio_skill&.dig(:confidence)
-        }
+    def assert_same_tenant!
+      unless @portfolio.session.tenant_id == @vacancy.tenant_id
+        raise ArgumentError, "Portfolio and vacancy must belong to the same tenant"
       end
-
-      comparisons
     end
 
-    # Returns portfolio skills with overrides applied.
+    def build_skill_comparisons
+      portfolio_skills = effective_portfolio_skills
+
+      @vacancy.vacancy_skills.order(:id).map do |vacancy_skill|
+        portfolio_skill = find_portfolio_skill(
+          portfolio_skills,
+          vacancy_skill.skill_label,
+          vacancy_skill.skill_id
+        )
+        candidate_level = portfolio_skill && portfolio_skill[:effective_level]
+        expected_level = vacancy_skill.expected_level
+        delta = candidate_level.nil? ? nil : candidate_level - expected_level
+        result = if candidate_level.nil?
+                   "not_assessed"
+                 elsif delta.zero?
+                   "match"
+                 elsif delta.positive?
+                   "exceed"
+                 else
+                   "gap"
+                 end
+
+        {
+          skill_label: vacancy_skill.skill_label,
+          skill_id: vacancy_skill.skill_id,
+          candidate_level: candidate_level,
+          expected_level: expected_level,
+          result: result,
+          delta: delta,
+          confidence: portfolio_skill&.dig(:confidence),
+          is_override: portfolio_skill ? portfolio_skill[:overridden] : false
+        }
+      end
+    end
+
     def effective_portfolio_skills
       @portfolio.portfolio_skills.includes(:assessor_override).map do |skill|
         override = skill.assessor_override
         {
-          id:              skill.id,
-          skill_id:        skill.skill_id,
-          skill_label:     skill.skill_label,
-          ai_level:        skill.ai_level,
+          id: skill.id,
+          skill_id: skill.skill_id,
+          skill_label: skill.skill_label,
+          ai_level: skill.ai_level,
           effective_level: override ? override.override_level : skill.ai_level,
-          confidence:      skill.ai_confidence,
-          overridden:      override.present?
+          confidence: skill.ai_confidence,
+          overridden: override.present?
         }
       end
     end
 
-    def find_portfolio_skill(portfolio_skills, label, skill_id)
-      portfolio_skills.find { |s| s[:skill_id] == skill_id && skill_id.present? } ||
-        portfolio_skills.find { |s| s[:skill_label].downcase == label.downcase }
+    def find_portfolio_skill(skills, label, skill_id)
+      # Prefer stable taxonomy IDs. If either record has no ID, fall back to a
+      # case-insensitive label match; a blank label is never a valid match.
+      if skill_id.present?
+        match = skills.find { |skill| skill[:skill_id] == skill_id }
+        return match if match
+      end
+
+      return nil if label.blank?
+
+      skills.find { |skill| skill[:skill_label].to_s.casecmp?(label.to_s) }
     end
 
-    def generate_narratives(skill_comparisons)
-      gaps    = skill_comparisons.select { |c| c[:result] == 'gap' }
-      matches = skill_comparisons.select { |c| c[:result] == 'match' }
-      exceeds = skill_comparisons.select { |c| c[:result] == 'exceed' }
-      not_assessed = skill_comparisons.select { |c| c[:result] == 'not_assessed' }
-
-      prompt = build_narrative_prompt(gaps, matches, exceeds, not_assessed)
+    def generate_narratives(comparisons)
+      counts = comparisons.each_with_object(Hash.new(0)) do |comparison, result|
+        result[comparison[:result]] += 1
+      end
+      prompt = build_narrative_prompt(comparisons, counts)
 
       begin
-        response = @gemini_client.generate_content(prompt, temperature: 0.4)
-        data = response.is_a?(Hash) ? response : JSON.parse(response)
-        { culture: data['culture_narrative'], overall: data['overall_narrative'] }
-      rescue => e
-        Rails.logger.error("[N13] Narrative generation failed: #{e.message}")
-        { culture: nil, overall: generate_fallback_narrative(skill_comparisons) }
+        response = @gemini_client.generate_content(prompt, temperature: 0.2)
+        data = response.is_a?(Hash) ? response : JSON.parse(response.to_s)
+        data = data.with_indifferent_access if data.respond_to?(:with_indifferent_access)
+        culture = data && data[:culture_narrative]
+        overall = data && data[:overall_narrative]
+
+        unless culture.is_a?(String) && overall.is_a?(String) &&
+               culture.present? && overall.present?
+          raise ArgumentError, "Narrative response is missing required text fields"
+        end
+
+        {
+          culture: sanitize_narrative(culture),
+          overall: sanitize_narrative(overall)
+        }
+      rescue StandardError => e
+        # Do not log model responses, prompt content, exception text, or candidate data.
+        Rails.logger.warn("[N13] Narrative fallback used (error_class=#{e.class.name})")
+        {
+          culture: fallback_culture_narrative,
+          overall: fallback_overall_narrative(counts)
+        }
       end
     end
 
-    def build_narrative_prompt(gaps, matches, exceeds, not_assessed)
-      vacancy = @vacancy
-      portfolio_session = @portfolio.session
-      assessment = portfolio_session.assessment
+    def build_narrative_prompt(comparisons, counts)
+      # Keep the AI input to role requirements and derived skill outcomes.
+      # Candidate names, invite tokens, transcripts, and raw evidence are excluded.
+      role = @vacancy.role_title.to_s.truncate(200)
+      culture = @vacancy.culture_dimensions.to_s.truncate(2_000)
+      competency = @vacancy.competency_expectations.to_s.truncate(2_000)
+      rows = comparisons.map do |comparison|
+        candidate = comparison[:candidate_level].nil? ? "not assessed" : "L#{comparison[:candidate_level]}"
+        expected = "L#{comparison[:expected_level]}"
+        "#{comparison[:skill_label].to_s.truncate(100)}: candidate #{candidate}; expected #{expected}; result #{comparison[:result]}"
+      end
 
       <<~PROMPT
-        You are writing a fit/gap analysis narrative for a candidate evaluation.
+        You are assisting a hiring assessor. Your text is advisory context, never a hiring decision.
+        Do not infer personality, protected traits, or facts not present in the structured data.
+        Explicitly distinguish not-assessed skills from gaps. State that humans must review evidence
+        and make the final decision. Do not recommend automatic rejection or acceptance.
 
-        ROLE: #{vacancy.role_title}
-        #{vacancy.culture_dimensions.present? ? "CULTURE EXPECTATIONS:\n#{vacancy.culture_dimensions}\n" : ""}
-        #{vacancy.competency_expectations.present? ? "COMPETENCY EXPECTATIONS:\n#{vacancy.competency_expectations}\n" : ""}
+        ROLE: #{role}
+        CULTURE EXPECTATIONS: #{culture.presence || "Not provided"}
+        COMPETENCY EXPECTATIONS: #{competency.presence || "Not provided"}
 
-        SKILL COMPARISON RESULTS:
-        - Matches (#{matches.count}): #{matches.map { |c| "#{c[:skill_label]} (L#{c[:candidate_level]})" }.join(', ')}
-        - Gaps (#{gaps.count}): #{gaps.map { |c| "#{c[:skill_label]}: candidate L#{c[:candidate_level]} vs expected L#{c[:expected_level]} (delta #{c[:delta]})" }.join(', ')}
-        - Exceeds (#{exceeds.count}): #{exceeds.map { |c| "#{c[:skill_label]}: candidate L#{c[:candidate_level]} vs expected L#{c[:expected_level]} (+#{c[:delta]})" }.join(', ')}
-        - Not assessed (#{not_assessed.count}): #{not_assessed.map { |c| c[:skill_label] }.join(', ')}
+        DETERMINISTIC SKILL RESULTS:
+        #{rows.join("\n")}
 
-        Write two short narrative paragraphs:
-        1. culture_narrative: 2-3 sentences on culture/competency fit based on the comparison patterns.
-        2. overall_narrative: 2-3 sentence overall hiring recommendation summary.
+        Counts: match=#{counts["match"]}, gap=#{counts["gap"]}, exceeds=#{counts["exceed"]}, not_assessed=#{counts["not_assessed"]}.
 
-        OUTPUT (JSON only):
+        Return JSON only with two concise fields:
         {
-          "culture_narrative": "...",
-          "overall_narrative": "..."
+          "culture_narrative": "2-3 sentences on the supplied culture/competency expectations only",
+          "overall_narrative": "2-3 sentences summarizing skills while explicitly preserving human review"
         }
       PROMPT
     end
 
-    def generate_fallback_narrative(comparisons)
-      gaps    = comparisons.count { |c| c[:result] == 'gap' }
-      matches = comparisons.count { |c| c[:result] == 'match' }
-      exceeds = comparisons.count { |c| c[:result] == 'exceed' }
+    def sanitize_narrative(text)
+      text.to_s.strip.truncate(2_000)
+    end
 
-      "Candidate shows #{matches} skill matches, #{exceeds} exceeds, and #{gaps} gaps against role requirements."
+    def fallback_culture_narrative
+      if @vacancy.culture_dimensions.blank? && @vacancy.competency_expectations.blank?
+        "No culture or competency expectations were supplied for this role. Review the evidence and assessment context before drawing conclusions."
+      else
+        "Culture and competency expectations are provided as context, but this report does not independently validate them. A human assessor should review relevant evidence before making a decision."
+      end
+    end
+
+    def fallback_overall_narrative(counts)
+      "The comparison contains #{counts["match"]} match(es), #{counts["gap"]} gap(s), #{counts["exceed"]} skill(s) above the stated level, and #{counts["not_assessed"]} not assessed skill(s). Not assessed does not mean unqualified; human review of evidence and context is required before any hiring decision."
+    end
+
+    def persist_result!(comparisons, narratives)
+      # Optimistic version check prevents a slow/stale worker from overwriting
+      # a newer report triggered after assessor changes.
+      if @report && @generation_version
+        @report.with_lock do
+          @report.reload
+          return if @report.generation_version != @generation_version.to_i
+
+          @report.update!(
+            skill_comparisons: comparisons,
+            culture_narrative: narratives[:culture],
+            overall_narrative: narratives[:overall],
+            generated_at: Time.current,
+            generation_status: "complete",
+            generation_error: nil
+          )
+        end
+      else
+        report = FitGapReport.find_or_initialize_by(
+          portfolio_id: @portfolio.id,
+          vacancy_id: @vacancy.id
+        )
+        report.update!(
+          skill_comparisons: comparisons,
+          culture_narrative: narratives[:culture],
+          overall_narrative: narratives[:overall],
+          generated_at: Time.current,
+          generation_status: "complete",
+          generation_error: nil
+        )
+        @report = report
+      end
     end
   end
 end

@@ -6,6 +6,14 @@ class Portfolio < ApplicationRecord
   belongs_to :session
   has_many :portfolio_skills, dependent: :destroy
   has_many :assessor_overrides, through: :portfolio_skills
+  has_many :fit_gap_reports, dependent: :destroy
+
+  # Portfolio rows do not store tenant_id themselves; ownership is inherited
+  # from the session that produced the portfolio. Never query by portfolio ID
+  # alone from an authenticated request.
+  scope :for_tenant, lambda { |tenant_id|
+    joins(:session).where(sessions: { tenant_id: tenant_id })
+  }
 
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
 

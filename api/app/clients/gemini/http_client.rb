@@ -63,7 +63,9 @@ module Gemini
           retry_block: ->(env, _opts, retries, exc) {
             retry_after = env&.response_headers&.[]('retry-after')&.to_i
             sleep([retry_after || 1, 30].min) if env&.status == 429
-            Rails.logger.warn("[Gemini::HttpClient] Retry ##{retries} for #{@model}: #{exc&.message}")
+            # Log only operational metadata; provider exception messages may
+            # contain request details and should never be copied to application logs.
+            Rails.logger.warn("[Gemini::HttpClient] Retry ##{retries} for #{@model} (status=#{env&.status || "unknown"})")
           }
         }
         f.options.timeout = @timeout
@@ -75,7 +77,9 @@ module Gemini
     def parse_response(response)
       unless response.success?
         raise RateLimitError.new("Rate limited", status: response.status, body: response.body) if response.status == 429
-        Rails.logger.error("[Gemini::HttpClient] API error #{response.status}: #{response.body}")
+        # Provider response bodies are intentionally not logged. They are untrusted
+        # and may echo request content or other sensitive operational details.
+        Rails.logger.error("[Gemini::HttpClient] API error status=#{response.status} model=#{@model}")
         raise ApiError.new("API returned #{response.status}", status: response.status, body: response.body)
       end
 
