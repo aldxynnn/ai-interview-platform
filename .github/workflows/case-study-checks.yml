@@ -1,0 +1,40 @@
+name: Case study checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "case-study/**"
+
+jobs:
+  api-unit-tests:
+    name: API fit-gap unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3.2"
+          bundler-cache: true
+      - name: Run focused fit-gap tests
+        run: bundle exec rspec spec/services/fit_gap/engine_spec.rb
+
+  frontend-build:
+    name: Frontend typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install
+      - name: Typecheck and build
+        run: npm run build
