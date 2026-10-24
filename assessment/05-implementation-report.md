@@ -9,30 +9,37 @@
 
 ## 1. Overview & Objectives Achieved
 
-In this implementation cycle, we executed the recommended full-stack vertical slice agreed upon in the audit: **Option 1: Harmonized API Contract + Non-Destructive Invalidation + Multi-Tenant Protection + Automated Regression Test Suite**.
+In this implementation cycle, we executed the recommended full-stack vertical slice agreed upon in the audit: **Option 1: Harmonized API Contract + Non-Destructive Invalidation + Multi-Tenant Protection + Automated Regression Test Suite + Monozukuri UI/UX Elevation**.
 
-This directly resolves the critical defects (P0–P2) identified in `/assessment/02-problem-analysis.md`:
+This directly resolves the critical defects (P0–P2) identified in `/assessment/02-problem-analysis.md` and fulfills the Monozukuri rubric:
 1. **Broken Contract Resolved**: Fit/Gap comparison table renders required level and human calibration indicators (`✏`).
 2. **Sidekiq Flood Prevented**: Polling loop uses HTTP 202 Accepted protocol; zero duplicate jobs enqueued.
 3. **UU PDP Multi-Tenant Security Enforced**: Strict tenant scoping on all portfolio, fitgap, and override endpoints (returns 404 for unauthorized access).
 4. **Non-Destructive Calibration**: Overrides update candidate skills and trigger regeneration without destroying existing reports.
 5. **Atomic Skill Writes**: Portfolio generation wrapped in database transactions to prevent partial writes.
-6. **Automated Verification**: Complete RSpec test suite with 14 examples passing and 0 failures, plus complete frontend build verification with 0 TypeScript/Vite errors.
+6. **Monozukuri UI/UX Elevation**:
+   - **Recruiter Executive Summary Card**: Instant match rate percentage, fit recommendation banner, and 6 KPI metric boxes.
+   - **Explicit Level Progression**: Side-by-side comparison of Vacancy Required Level, AI-Assessed Level (with confidence dot), and Calibrated Final Level (with `✏ Calibrated` chip).
+   - **Tabbed Interactive Filtering**: Fast switching between "All Skills", "Fit (Matches & Exceeds)", "Skill Gaps", "Human Calibrated", and "Unassessed".
+   - **Bounded Polling & State Management**: Graceful transitions across Initial Loading (Skeleton), Generating (with animated progress & timeout guard), Timeout Guidance (with Check Now), Error (with Retry), and Empty States.
+   - **Visual Hierarchy & Accessibility**: Semantic tables, responsive scroll containers, accessible ARIA roles, and high-contrast WCAG AA styling.
+7. **Automated Verification**: Complete RSpec test suite with 14 examples passing and 0 failures, plus complete frontend build verification with 0 TypeScript/Vite errors.
 
 ---
 
-## 2. Summary of Modified Files
+## 2. Summary of Modified & Created Files
 
 | File | Purpose / Reason for Change |
 |---|---|
+| `web/src/components/fitgap/RecruiterSummary.tsx` | New component displaying executive fit recommendation, match rate percentage bar, and 6 KPI metrics (Matches, Exceeds, Gaps, Overrides, Unassessed, Discovered). |
+| `web/src/components/fitgap/ComparisonTable.tsx` | Upgraded table with 5 distinct columns (Competency, Required Level, AI Assessed, Calibrated Level, Fit Result), interactive filter tabs, callout box for assessor notes, and legend footer. |
+| `web/src/pages/fitgap/FitGapReportPage.tsx` | Upgraded report page with rich context header (Candidate Name, Vacancy Role, Assessment Name, Generated timestamp), bounded polling with timeout guard, error state with retry, empty state, culture narratives, and discovered skills cards. |
 | `api/app/services/fit_gap/engine.rb` | Harmonize comparison output payload by emitting both `required_level` and `expected_level`, include `is_override`, `ai_level`, and `assessor_notes`, case-insensitive skill matching, and enrich fallback narrative when Gemini fails. |
 | `api/app/controllers/api/v1/portfolios_controller.rb` | Enforce multi-tenant scoping via `joins(:session).where(sessions: { tenant_id: current_tenant_id })`, return HTTP 202 Accepted when report is generating, and prevent report destruction during regeneration. |
 | `api/app/controllers/api/v1/portfolio_skills_controller.rb` | Enforce multi-tenant scoping on overrides, and replace destructive report deletion with non-destructive regeneration queuing via `find_each`. |
 | `api/app/services/portfolios/generator.rb` | Wrap skill destruction and insertion in `ActiveRecord::Base.transaction` to ensure atomic updates and prevent orphaned/wiped skill records. |
 | `api/app/services/exports/pdf_generator.rb` | Suppress noisy Prawn UTF-8 multibyte character font warning during test and report runs. |
 | `web/src/types/index.ts` | Align `SkillComparison` interface with backend contract (`expected_level`, `ai_level`, `confidence`, `is_override`, `assessor_notes`). |
-| `web/src/components/fitgap/ComparisonTable.tsx` | Render required level using fallback (`required_level ?? expected_level`), display `✏` indicator with hover tooltip for overridden skills, display assessor notes, and add unassessed skills count to summary. |
-| `web/src/pages/fitgap/FitGapReportPage.tsx` | Handle HTTP 202 Accepted response without spamming POST trigger requests on 404, gracefully format discovered skill levels using `parseLevel` and `LEVEL_LABELS`. |
 | `web/package-lock.json` | Lock web dependencies resolved during containerized environment build. |
 | `api/spec/` (7 files) | Establish the project's automated test harness with 14 RSpec tests covering `FitGap::Engine`, `PortfoliosController`, and `PortfolioSkillsController`. |
 
@@ -65,34 +72,34 @@ This directly resolves the critical defects (P0–P2) identified in `/assessment
   ```
 - **Actual Result**:
   ```text
-  Randomized with seed 61206
+  Randomized with seed 61368
 
   Api::V1::PortfolioSkills
     POST /api/v1/portfolio_skills/:id/override
-      creates an override and enqueues regeneration without destroying existing reports
       blocks cross-tenant overrides with 404 under UU PDP
+      creates an override and enqueues regeneration without destroying existing reports
 
   FitGap::Engine
     #call
-      correctly marks unassessed vacancy skills without penalizing the candidate
-      generates a deterministic fallback narrative when Gemini client fails
       produces a harmonized comparison payload with required_level and expected_level
       reflects human assessor overrides and recalculates delta accordingly
+      correctly marks unassessed vacancy skills without penalizing the candidate
+      generates a deterministic fallback narrative when Gemini client fails
 
   Api::V1::Portfolios
     GET /api/v1/sessions/:id/portfolio
       blocks cross-tenant access with 404 under UU PDP isolation
       returns portfolio details for authorized tenant
-    GET /api/v1/portfolios/:id/export
-      exports JSON successfully for authorized tenant
-      exports PDF successfully for authorized tenant
-      blocks cross-tenant export with 404
     GET /api/v1/portfolios/:id/fitgap/:vacancy_id
-      returns 200 ok when report exists
       blocks cross-tenant access with 404
+      returns 200 ok when report exists
       returns 202 accepted when report is not yet generated
+    GET /api/v1/portfolios/:id/export
+      exports PDF successfully for authorized tenant
+      exports JSON successfully for authorized tenant
+      blocks cross-tenant export with 404
 
-  Finished in 0.96768 seconds (files took 1.12 seconds to load)
+  Finished in 1.07 seconds (files took 1.68 seconds to load)
   14 examples, 0 failures
   ```
 
@@ -108,16 +115,16 @@ This directly resolves the critical defects (P0–P2) identified in `/assessment
 
   vite v6.4.5 building for production...
   transforming...
-  ✓ 1841 modules transformed.
+  ✓ 1843 modules transformed.
   rendering chunks...
   computing gzip size...
   dist/index.html                         0.63 kB │ gzip:  0.33 kB
-  dist/assets/index-BmIrEkgD.css         30.91 kB │ gzip:  6.38 kB
+  dist/assets/index-BVg8Y0Fn.css         38.81 kB │ gzip:  7.57 kB
   dist/assets/vendor-ui-DYhNZzle.js     104.61 kB │ gzip: 35.42 kB
-  dist/assets/vendor-misc-De91tZEk.js   115.58 kB │ gzip: 40.79 kB
+  dist/assets/vendor-misc-CoK1sgdg.js   122.14 kB │ gzip: 42.41 kB
   dist/assets/vendor-react-D3w9ihCe.js  181.45 kB │ gzip: 59.79 kB
-  dist/assets/index-BfE3-s2M.js         182.54 kB │ gzip: 51.99 kB
-  ✓ built in 5.03s
+  dist/assets/index-gs0DQ51M.js         203.18 kB │ gzip: 56.58 kB
+  ✓ built in 5.48s
   ```
 
 ---
@@ -141,6 +148,8 @@ Branch: `feat-fitgap-calibration-revamp`
 2. `3bc5246` — `fix(fitgap): harmonize API contract, enforce tenant isolation, non-destructive overrides, atomic skill writes`
 3. `77dfeed` — `test(fitgap): add RSpec test suite covering tenant isolation, override calibration, and fit/gap engine`
 4. `a45ecad` — `fix(frontend): harmonize skill comparison levels, render override indicators, and fix polling loop`
+5. `bc0b986` — `docs: add implementation and verification report`
+6. `7129eaa` — `feat(ui): elevate Fit/Gap Report UX with recruiter executive summary, explicit calibration progression, tabbed filtering, and bounded polling states`
 
 ---
 
