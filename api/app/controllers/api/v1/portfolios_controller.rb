@@ -6,7 +6,7 @@ module Api
       authorize_auth_token! :assessor
 
       before_action :set_session,   only: %i[show regenerate]
-      before_action :set_portfolio, only: %i[show export]
+      before_action :set_portfolio, only: %i[show export fitgap regenerate_fitgap show_fitgap]
 
       # GET /api/v1/sessions/:id/portfolio
       def show
@@ -79,7 +79,6 @@ module Api
 
       # POST /api/v1/portfolios/:id/regenerate_fitgap
       def regenerate_fitgap
-        portfolio  = Portfolio.find(params[:id])
         vacancy_id = params[:vacancy_id]
 
         return json_error("vacancy_id is required", :unprocessable_entity) if vacancy_id.blank?
@@ -87,56 +86,49 @@ module Api
         vacancy = Vacancy.find_by(id: vacancy_id)
         return json_error("Vacancy not found", :not_found) unless vacancy
 
-        unless portfolio.complete?
-          return json_error("Portfolio is not ready (status: #{portfolio.generation_status})", :unprocessable_entity)
+        unless @portfolio.complete?
+          return json_error("Portfolio is not ready (status: #{@portfolio.generation_status})", :unprocessable_entity)
         end
 
-        FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)&.destroy
-        FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id)
+        FitGapGeneratorWorker.perform_async(@portfolio.id, vacancy.id)
 
         render json: { status: "generating", message: "Fit/gap report regeneration queued" }, status: :accepted
-      rescue ActiveRecord::RecordNotFound
-        json_error("Portfolio not found", :not_found)
       end
 
       # POST /api/v1/portfolios/:id/fitgap
       def fitgap
-        portfolio = Portfolio.find(params[:id])
-
         vacancy_id = params.dig(:fitgap, :vacancy_id) || params[:vacancy_id]
         return json_error("vacancy_id is required", :unprocessable_entity) if vacancy_id.blank?
 
         vacancy = Vacancy.find_by(id: vacancy_id)
         return json_error("Vacancy not found", :not_found) unless vacancy
 
-        unless portfolio.complete?
-          return json_error("Portfolio is not ready (status: #{portfolio.generation_status})", :unprocessable_entity)
+        unless @portfolio.complete?
+          return json_error("Portfolio is not ready (status: #{@portfolio.generation_status})", :unprocessable_entity)
         end
 
-        # Return cached report if it exists and portfolio has no new overrides
-        existing = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)
+        # Return cached report if it exists
+        existing = FitGapReport.find_by(portfolio_id: @portfolio.id, vacancy_id: vacancy.id)
         if existing
           return json_response(report: fit_gap_json(existing))
         end
 
-        FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id)
+        FitGapGeneratorWorker.perform_async(@portfolio.id, vacancy.id)
         render json: { status: "generating", message: "Fit/gap report generation queued" }, status: :accepted
-      rescue ActiveRecord::RecordNotFound
-        json_error("Portfolio not found", :not_found)
       end
 
       # GET /api/v1/portfolios/:id/fitgap/:vacancy_id
       def show_fitgap
-        portfolio = Portfolio.find(params[:id])
-        report    = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: params[:vacancy_id])
+        vacancy = Vacancy.find_by(id: params[:vacancy_id])
+        return json_error("Vacancy not found", :not_found) unless vacancy
+
+        report = FitGapReport.find_by(portfolio_id: @portfolio.id, vacancy_id: vacancy.id)
 
         if report.nil?
-          return json_error("Fit/gap report not found", :not_found)
+          return render json: { status: "generating", message: "Fit/gap report generation in progress" }, status: :accepted
         end
 
         json_response(report: fit_gap_json(report))
-      rescue ActiveRecord::RecordNotFound
-        json_error("Portfolio not found", :not_found)
       end
 
       private
@@ -149,11 +141,13 @@ module Api
 
       def set_portfolio
         # Routes use :id for both session-based and direct portfolio lookups
-        # If called from session context, look up via session
+        # If called from session context, look up via session (scoped by TenantScoped)
         if @session
           @portfolio = @session.portfolio
         else
-          @portfolio = Portfolio.find(params[:id])
+          @portfolio = Portfolio.joins(:session)
+                                .where(sessions: { tenant_id: current_tenant_id })
+                                .find(params[:id])
         end
       rescue ActiveRecord::RecordNotFound
         json_error("Portfolio not found", :not_found)

@@ -3,6 +3,8 @@
 require 'prawn'
 require 'prawn/table'
 
+Prawn::Fonts::AFM.hide_m17n_warning = true
+
 module Exports
   # N14: Generates a PDF export of a portfolio, optionally including a fit/gap report.
   # Returns the PDF as a binary string.
