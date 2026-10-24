@@ -9,6 +9,7 @@ import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
+import { parseLevel, LEVEL_LABELS } from "@/utils/constants";
 import type { FitGapReport, Portfolio } from "@/types";
 
 export default function FitGapReportPage() {
@@ -29,17 +30,15 @@ export default function FitGapReportPage() {
     if (!portfolio) return;
     try {
       const res = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
+      if (res.status === 202 || (res.data as any)?.status === "generating") {
+        setGenerating(true);
+        return;
+      }
       setReport(res.data.report);
       setGenerating(false);
     } catch (e: any) {
-      if (e?.response?.status === 404) {
-        try {
-          await portfoliosApi.triggerFitGap(portfolio.id, Number(vacancyId));
-          setGenerating(true);
-        } catch {
-          setGenerating(false);
-        }
-      }
+      // If 404 or other error, stop generating indicator
+      setGenerating(false);
     }
   }, [portfolio, vacancyId]);
 
@@ -193,7 +192,7 @@ export default function FitGapReportPage() {
                       <div key={s.id} className="text-sm flex items-center gap-2">
                         <span className="font-medium">{s.skill_label}</span>
                         <span className="text-muted-foreground">
-                          {s.ai_level} ({s.ai_confidence?.toLowerCase() === "low" ? "low confidence" : "confirmed"})
+                          {LEVEL_LABELS[parseLevel(s.ai_level)] || s.ai_level} ({s.ai_confidence?.toLowerCase() === "low" ? "low confidence" : "confirmed"})
                         </span>
                         <span className="text-xs text-muted-foreground">— Not required for this role, may be additive.</span>
                       </div>

@@ -29,6 +29,7 @@ export default function ComparisonTable({ comparisons }: ComparisonTableProps) {
   const matchCount = comparisons.filter((c) => c.result === "match").length;
   const gapCount = comparisons.filter((c) => c.result === "gap").length;
   const exceedCount = comparisons.filter((c) => c.result === "exceed").length;
+  const unassessedCount = comparisons.filter((c) => c.result === "not_assessed").length;
 
   return (
     <div className="space-y-3">
@@ -43,36 +44,54 @@ export default function ComparisonTable({ comparisons }: ComparisonTableProps) {
             </tr>
           </thead>
           <tbody>
-            {comparisons.map((c, i) => (
-              <tr key={i} className="border-b last:border-0">
-                <td className="px-4 py-2.5">{c.skill_label}</td>
-                <td className="px-4 py-2.5 text-center text-muted-foreground">
-                  {LEVEL_LABELS[c.required_level]}
-                </td>
-                <td className="px-4 py-2.5 text-center">
-                  {c.candidate_level != null ? (
-                    <span>
-                      {LEVEL_LABELS[c.candidate_level]}
-                      {c.is_override && <span className="text-xs text-muted-foreground ml-1">✏</span>}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5 text-center">
-                  <ResultBadge comparison={c} />
-                </td>
-              </tr>
-            ))}
+            {comparisons.map((c, i) => {
+              const reqLevel = c.required_level ?? c.expected_level;
+              return (
+                <tr key={i} className="border-b last:border-0">
+                  <td className="px-4 py-2.5">
+                    <div className="font-medium">{c.skill_label}</div>
+                    {c.assessor_notes && (
+                      <div className="text-xs text-muted-foreground italic mt-0.5">
+                        Note: {c.assessor_notes}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-muted-foreground">
+                    {reqLevel != null && LEVEL_LABELS[reqLevel] ? LEVEL_LABELS[reqLevel] : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    {c.candidate_level != null ? (
+                      <span className="inline-flex items-center gap-1 justify-center">
+                        {LEVEL_LABELS[c.candidate_level] || `L${c.candidate_level}`}
+                        {c.is_override && (
+                          <span
+                            className="text-xs text-amber-600 font-semibold cursor-help"
+                            title={c.ai_level ? `AI rated L${c.ai_level}, calibrated by assessor` : "Human override applied"}
+                          >
+                            ✏
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <ResultBadge comparison={c} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Summary */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         {matchCount > 0 && <span>✅ Match: {matchCount} skill{matchCount !== 1 ? "s" : ""}</span>}
         {gapCount > 0 && <span>⚠ Gap: {gapCount} skill{gapCount !== 1 ? "s" : ""}</span>}
         {exceedCount > 0 && <span>⭐ Exceeds: {exceedCount} skill{exceedCount !== 1 ? "s" : ""}</span>}
+        {unassessedCount > 0 && <span>— Unassessed: {unassessedCount} skill{unassessedCount !== 1 ? "s" : ""}</span>}
         <span className="ml-auto">✏ = human override applied</span>
       </div>
     </div>
