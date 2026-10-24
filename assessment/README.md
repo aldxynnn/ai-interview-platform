@@ -1,41 +1,41 @@
-# Rakamin Product Engineer Case Study — Implementation Notes
+# Rakamin Product Engineer Case Study - Implementation Notes
 
-**Submission deadline supplied by candidate:** 28 October 2026, 23:00 WIB  
 **Focus slice:** trustworthy Fit/Gap candidate assessment reports  
-**Branch:** `feat/trustworthy-fit-gap`
+**Branch:** `feat/trustworthy-fit-gap`  
+**Fork PR:** https://github.com/aldxynnn/ai-interview-platform/pull/1  
+**Latest green CI head:** `85600c6596fcac46180519b06dc77283e9622476`
 
-This folder contains the written narrative and evidence checklist. Code changes belong in `api/` and `web/`; the final hiring-platform upload must be a single PDF, as requested by the brief.
+The hiring-platform submission must still be one PDF, as requested by the case-study brief. This folder contains the written narrative and evidence checklist; application code changes live in `api/` and `web/`.
 
 ## Executive summary
 
-The product helps assessors compare the skills evidenced in an AI-assisted interview against a vacancy's required skills. The highest-impact slice selected here is not a visual-only redesign: it is making the Fit/Gap result safer to access, correct to interpret, resilient to AI/queue failures, and easier to review.
+The product helps assessors compare skills evidenced in an AI-assisted interview against a vacancy's required skills. The selected end-to-end slice makes Fit/Gap reports safer to access, more reliable to generate, and easier to interpret.
 
-The selected change addresses four connected seams:
+The change covers:
+1. Tenant ownership for portfolio, report, export, and override actions.
+2. API/frontend contract correctness for the required skill level.
+3. Explicit report generation states and generation-version fencing for duplicate or stale jobs.
+4. Deterministic skill comparison with bounded AI narrative as advisory context only.
+5. Candidate-impact UX: visible uncertainty, confidence, human override, and human-review guidance.
 
-1. **Tenant ownership:** authenticated portfolio/report/export/override actions must remain inside the current tenant.
-2. **Contract correctness:** the API returns `expected_level`; the previous frontend contract and table expected `required_level`. The report now uses the actual API field.
-3. **Generation lifecycle:** reports have explicit `pending`, `generating`, `complete`, and `failed` states, an incrementing generation version, a coordinator, and a worker that ignores duplicates or stale versions.
-4. **Candidate-impact UX:** the report explains confidence, assessor overrides, gaps, matches, above-requirement results, and skills that were not assessed. It explicitly says that the report supports a human decision rather than making it.
+## Verification status
 
-## Contents
+GitHub Actions completed successfully for the latest cleaned feature-branch head:
+- CI run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40028271367
+- Frontend component tests: 1 test file, 4 tests passed; production build succeeded.
+- API: database schema load succeeded; RSpec reported 14 examples, 0 failures.
+- Seeded fault was executed and restored. The deliberately broken equality comparison failed with 14 examples / 2 failures: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40027502286. The restoration commit passed with 14 examples / 0 failures: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40027691951.
 
-- `product-analysis.md`: product context, P0–P3 findings, and constraint signals.
-- `technical-decisions.md`: considered options and rationale for the chosen implementation.
-- `acceptance-criteria.md`: self-derived behavior and edge-case criteria.
-- `verification-plan.md`: commands, test evidence to capture, seeded fault procedure, and video/screenshot checklist.
+The application was not launched locally in this environment because repository cloning failed due to unavailable DNS/network access. CI passing proves the configured automated checks, not a live end-to-end browser session.
 
-## Important verification status
+## Submission artifacts
 
-The code has been committed to the feature branch through GitHub. In this environment, direct repository cloning was blocked by DNS/network access, so the full application could not be started here. The tests and workflow were added, but a green build/test result must not be claimed until GitHub Actions or a local run confirms it. Capture real screenshots from the running application and add the 3–5 minute video link before uploading the final PDF.
+- [x] Open feature-branch PR on the fork: https://github.com/aldxynnn/ai-interview-platform/pull/1
+- [x] Backend RSpec and frontend component/build checks pass in CI.
+- [x] Seeded-fault failure and restoration evidence are retained in commit/run history.
+- [ ] Open the pull request against the original repository if permitted: https://github.com/rakamindev/ai-interview-platform/compare/main...aldxynnn:feat/trustworthy-fit-gap?expand=1
+- [ ] Capture actual screenshots from a running application: completed report, unassessed vs gap, pending/generating, failed/retry, empty state, and narrow viewport.
+- [ ] Record a 3-5 minute walkthrough and add a reviewer-accessible link.
+- [ ] Export and inspect the final single PDF with the upstream PR, actual screenshots, test evidence, and video link; upload it to the hiring portal.
 
-## Submission artifacts still to collect
-
-- [ ] Open Pull Request link and final commit SHA.
-- [x] Frontend component tests and production build are green in CI run 40027329905.
-- [x] RSpec and database schema load are green in CI run 40027329905; restored seeded-fault run 40027691951 also passes.
-- [x] Seeded-fault test executed in CI: run 40027502286 failed on the deliberate equality bug (14 examples, 2 failures); restoration commit 23e46f89d21216dc59718f9804ceccafbea5dff0 followed by run 40027691951 (14 examples, 0 failures).
-- [ ] Screenshots from the actual running app: complete report, unassessed skill, loading/pending state, failed/retry state, narrow/mobile layout.
-- [ ] Public or reviewer-accessible 3–5 minute walkthrough link.
-- [ ] Final PDF updated to include the actual PR, screenshots, test results, seeded fault evidence, and video link.
-
-Do not submit claims or evidence that have not been produced.
+Do not submit claims or visual evidence that have not been produced. The provided case-study PDF states a deadline of Wednesday 19 August, 13:00 WIB, while an earlier working note referred to 28 October 2026, 23:00 WIB. Confirm the actual deadline in the hiring portal before submission.
