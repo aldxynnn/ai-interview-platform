@@ -62,6 +62,7 @@ jobs:
         working-directory: api
     env:
       RAILS_ENV: test
+      SECRET_KEY_BASE: ci-test-only-secret-key-base-not-for-production-0123456789abcdef
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_HOST: 127.0.0.1
