@@ -31,6 +31,9 @@ export default function FitGapReportPage() {
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
+        // A poll may see 404 while the background job is still running. Trigger only
+        // once; repeatedly enqueueing on every poll creates duplicate Sidekiq jobs.
+        if (generating) return;
         try {
           await portfoliosApi.triggerFitGap(portfolio.id, Number(vacancyId));
           setGenerating(true);
@@ -44,7 +47,7 @@ export default function FitGapReportPage() {
         setPageError("Tidak dapat memuat fit/gap report. Periksa koneksi lalu coba lagi.");
       }
     }
-  }, [portfolio, vacancyId]);
+  }, [portfolio, vacancyId, generating]);
 
   useEffect(() => {
     let active = true;
