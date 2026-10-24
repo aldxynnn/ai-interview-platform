@@ -1,82 +1,139 @@
-# Video Demonstration Walkthrough Script & Storyboard
-
-**Format**: 3 to 5 Minute Product & Engineering Walkthrough Video  
-**Target Duration**: 4 Minutes 15 Seconds  
-**Platform Recommendation**: Loom / YouTube Unlisted / Google Drive  
-**Presenter**: Senior Fullstack Product Engineer  
-**Target Audience**: Product Team & Engineering Leadership (CTO & Technical Lead)  
+# Naskah Video Demonstrasi — Bahasa Indonesia
+## Judul: AI Interview Platform — Fit/Gap Calibration Revamp
+**Durasi Target:** 4 menit 15 detik  
+**Branch:** `feat-fitgap-calibration-revamp`  
+**Catatan Pengucapan:** Istilah teknis (Fit/Gap, RSpec, Sidekiq, API) dibaca seperti tertulis; tidak perlu diindonesiakan.
 
 ---
 
-## 1. Storyboard & Timestamp Breakdown
+## ▶ BAGIAN 1 — PEMBUKAAN (0:00 – 0:45)
 
-| Segment | Timestamp | Screen Focus / Visual Cue | Core Theme & Purpose |
-|---|---|---|---|
-| **Part 1** | `0:00 – 0:45` | Title slide / Candidate evaluation screen | Introduction, case study objective, and product philosophy. |
-| **Part 2** | `0:45 – 1:45` | Baseline before code & broken Fit/Gap screen | Root cause analysis: contract seam mismatch, 404 polling flood, UU PDP vulnerability. |
-| **Part 3** | `1:45 – 2:45` | Architecture diagram & Git diff | Fullstack technical solution: harmonized payload, 202 protocol, tenant scoping. |
-| **Part 4** | `2:45 – 3:45` | Live revamped Fit/Gap Report UI | Monozukuri UX walkthrough: recruiter summary, level progression, tabbed filter, error states. |
-| **Part 5** | `3:45 – 4:15` | Terminal test run & PR view | Automated RSpec verification (14 tests), seeded fault proof, and handover. |
+**[Layar: Halaman utama aplikasi AI Interview Platform]**
+
+> "Halo, saya [nama Anda]. Saya adalah Fullstack Product Engineer, dan di video ini saya akan menunjukkan bagaimana saya menyelesaikan case study dari Rakamin — membangun ulang fitur Fit/Gap Analysis yang sebelumnya rusak menjadi pengalaman yang benar-benar siap dipakai."
+
+**[Layar: Daftar kandidat / portfolio halaman]**
+
+> "Konteksnya begini: seorang recruiter harus bisa melihat dalam tiga detik — apakah kandidat ini cocok untuk posisi ini, atau tidak? Di platform ini, ada fitur bernama Fit/Gap Report yang seharusnya membantu recruiter membandingkan kemampuan kandidat dengan kebutuhan posisi.
+> 
+> Masalahnya — sebelum perbaikan saya — fitur ini hampir tidak bisa digunakan. Ada tiga bug P0 yang langsung berdampak ke pengguna."
 
 ---
 
-## 2. Minute-by-Minute Speaking Script
+## ▶ BAGIAN 2 — KONDISI AWAL / BEFORE (0:45 – 1:45)
 
-### Part 1: Introduction & Product Philosophy (0:00 – 0:45 | 45s)
-- **Visual**: Camera on presenter + screen showing `FitGapReportPage.tsx` title header.
-- **Presenter Spoken Script**:
-  > *"Hello team, welcome to this product and engineering walkthrough for the AI Interview Platform.
-  >
-  > As a Product Engineer, our goal isn't just fixing bugs or writing lines of code; it's delivering high-impact value for the people who rely on this software every day: recruiters making hiring calls, assessors calibrating evaluations, and candidates whose careers depend on fair, accurate assessments under Indonesia's Personal Data Protection Law (UU PDP).
-  >
-  > In this walkthrough, I’ll show how we took a broken, infinitely looping Fit/Gap analysis flow and transformed it into a robust, high-craftsmanship product experience—what we call Monozukuri."*
+**[Layar: Screenshot BEFORE — kolom "Required Level" kosong]**
 
-### Part 2: Root Cause Analysis of Baseline Flaws (0:45 – 1:45 | 60s)
-- **Visual**: Display `BEFORE_01_FitGap_Blank_Required_Level.png` and `BEFORE_02_Sidekiq_Job_Flooding_Loop.png`.
-- **Presenter Spoken Script**:
-  > *"Let's look at what was happening in the baseline.
-  >
-  > First, in the Fit/Gap comparison table, the 'Required' level column was completely blank. Why? Because the Rails backend in `FitGap::Engine` was emitting `expected_level`, while the React component looked for `c.required_level`. Furthermore, `c.is_override` was never populated, making human calibrations completely invisible.
-  >
-  > Second, we found a severe design flaw in the polling loop: when a report wasn't ready yet, the API returned a 404. The frontend caught that 404 and immediately triggered a new generation job—spamming Sidekiq every 5 seconds. If the Gemini model delayed, it flooded the Redis queue with duplicate jobs.
-  >
-  > Third, a critical compliance issue: assessor endpoints used raw `Portfolio.find(params[:id])` without session tenant scoping, meaning Tenant B could inspect and export candidate portfolios from Tenant A—a direct violation of UU PDP."*
+> "Bug pertama: kolom 'Required Level' — atau level yang dibutuhkan untuk posisi ini — seluruhnya kosong. Ini terjadi karena API backend mengirimkan field bernama `expected_level`, tapi frontend mencari `required_level`. Ketidakcocokan kontrak ini membuat recruiter tidak bisa melihat apakah kandidat memenuhi syarat atau tidak."
 
-### Part 3: The Fullstack Architectural Solution (1:45 – 2:45 | 60s)
-- **Visual**: Show `api/app/services/fit_gap/engine.rb` and `PortfoliosController` diffs.
-- **Presenter Spoken Script**:
-  > *"To solve this cleanly, we designed a fullstack vertical slice:
-  >
-  > On the backend:
-  > 1. We harmonized the contract: `FitGap::Engine` now emits both `required_level` and `expected_level`, plus `is_override`, `ai_level`, and `assessor_notes`.
-  > 2. We replaced 404 polling with the HTTP 202 Accepted protocol. When a report is being generated, the API responds with 202 `{ status: 'generating' }`. The frontend recognizes this without throwing an error or spamming duplicate jobs.
-  > 3. We enforced strict multi-tenant isolation: all portfolio queries are scoped through `joins(:session).where(sessions: { tenant_id: current_tenant_id })`. Cross-tenant requests now securely return 404.
-  > 4. We wrapped skill writes in database transactions to prevent partial write data loss, and made override regeneration non-destructive."*
+**[Layar: Screenshot BEFORE — infinite spinner]**
 
-### Part 4: Live Monozukuri UI/UX Walkthrough (2:45 – 3:45 | 60s)
-- **Visual**: Open live running app on `http://localhost:5173` or show `AFTER_01` through `AFTER_04` screenshots.
-- **Presenter Spoken Script**:
-  > *"Now let's look at the transformed user experience.
-  >
-  > At the top, we introduced the Recruiter Executive Summary. A recruiter immediately sees the Competency Fit Rate—here 83%—along with a clear verdict badge like 'Strong Role Fit' and 6 quick KPI chips. In 3 seconds, a recruiter knows whether this candidate meets role benchmarks.
-  >
-  > Below that, the table now has 5 crystal-clear columns:
-  > - Required Level with visual badges.
-  > - AI Assessed Level with confidence dots.
-  > - Calibrated Final Level showing the human calibration chip.
-  > - And notice this: when an assessor calibrated PostgreSQL from L3 to L4, an audit callout box appears right under the skill name explaining why: 'Candidate articulated MVCC locks exceeding AI probe depth.'
-  >
-  > We also added interactive tabs: recruiters can click 'Gaps' to immediately isolate areas needing development, or 'Overrides' to review assessor adjustments.
-  >
-  > Finally, loading and error states are fully resilient: bounded polling with progress indication, a 60-second timeout guard, and explicit Retry buttons."*
+> "Bug kedua: jika laporan belum selesai digenerate, halaman ini langsung polling ke server setiap 5 detik — tanpa batas. Server membalas dengan HTTP 404 karena laporan belum ada, tapi halaman terus kirim request lagi dan lagi. Akibatnya, Sidekiq — itu adalah sistem antrian background job kami — dibanjiri job duplikat sampai bisa membebani server."
 
-### Part 5: System Rigor, Automated Testing & Handover (3:45 – 4:15 | 30s)
-- **Visual**: Terminal showing `bundle exec rspec` passing all 14 tests, and Git branch status.
-- **Presenter Spoken Script**:
-  > *"All of this is backed by automated tests. We built an RSpec harness with 14 examples covering the Engine, tenant isolation, and non-destructive overrides—all passing with zero failures.
-  >
-  > We even proved our tests catch regressions through a seeded fault test on a scratch branch, breaking logic and verifying failure before reverting with visible Git history.
-  >
-  > All deliverables, including the compliance matrix, before/after visual catalog, and the single PDF report, are ready in `/assessment/deliverables`.
-  >
-  > Thank you for your time, and I look forward to our live technical defense!"*
+**[Layar: Terminal / kode — PortfoliosController sebelum fix]**
+
+> "Bug ketiga yang paling serius: celah keamanan. Seorang pengguna dari Tenant B bisa mengakses data kandidat milik Tenant A hanya dengan mengganti ID di URL. Ini melanggar Undang-Undang Perlindungan Data Pribadi — UU PDP Nomor 27 Tahun 2022 — yang mewajibkan data kandidat diakses hanya oleh pihak yang berwenang."
+
+---
+
+## ▶ BAGIAN 3 — SOLUSI TEKNIS (1:45 – 2:45)
+
+**[Layar: Diff kode — FitGap::Engine]**
+
+> "Saya memperbaiki ketiga bug ini dengan pendekatan yang saya sebut 'harmonized contract'. Di sini saya mengubah FitGap::Engine agar mengirimkan `required_level` — bukan `expected_level` — sehingga backend dan frontend berbicara bahasa yang sama. Saya juga menambahkan field `is_override` dan `assessor_notes` agar kalibrasi assessor ikut dikirim ke UI."
+
+**[Layar: Diff kode — PortfoliosController]**
+
+> "Untuk mengatasi bug polling, controller sekarang mengembalikan HTTP 202 Accepted ketika laporan masih dalam proses. Artinya, frontend tahu laporan sedang dibuat — bukan gagal. Di sisi frontend, saya tambahkan batas maksimal 15 kali polling, jadi tidak ada lagi loop tanpa akhir."
+
+**[Layar: Diff kode — tenant scoping]**
+
+> "Dan untuk keamanan multi-tenant: setiap query ke database sekarang di-scope berdasarkan tenant dari session pengguna yang sedang login. Kalau ada akses lintas tenant, server langsung mengembalikan 404 — bukan data orang lain."
+
+**[Layar: Diff kode — Portfolios::Generator#save_skills]**
+
+> "Satu perbaikan tambahan yang penting: operasi simpan skill sekarang dibungkus dalam transaction. Kalau ada langkah yang gagal di tengah jalan, seluruh operasi dibatalkan. Tidak ada lagi data yang tersimpan sebagian."
+
+---
+
+## ▶ BAGIAN 4 — HASIL UI/UX MONOZUKURI (2:45 – 3:45)
+
+**[Layar: AFTER — Recruiter Executive Summary card]**
+
+> "Sekarang kita lihat hasilnya. Ini adalah tampilan baru Fit/Gap Report. Di bagian atas ada Recruiter Executive Summary — sebuah kartu ringkasan yang menampilkan angka kecocokan kandidat, rekomendasi keputusan, dan enam metrik utama. Recruiter bisa langsung tahu dalam tiga detik."
+
+**[Layar: AFTER — tabel 5 kolom dengan level progression]**
+
+> "Di tabel di bawahnya, sekarang ada lima kolom: nama skill, level yang dibutuhkan posisi, level yang dinilai AI, level akhir setelah kalibrasi assessor, dan status — apakah Fit, Gap, Override, atau Unassessed. Kalau assessor mengubah nilai AI, ada catatan kalibrasi yang muncul langsung di bawah baris tersebut — transparan dan bisa ditelusuri."
+
+**[Layar: AFTER — tab filtering]**
+
+> "Ada juga tab filter interaktif. Recruiter bisa klik 'Gaps' untuk melihat skill yang kurang, atau klik 'Overrides' untuk melihat semua kalibrasi manual yang sudah dilakukan assessor. Satu klik, langsung terfilter."
+
+**[Layar: AFTER — generating state dengan progress bar]**
+
+> "Dan saat laporan sedang dibuat, ini yang muncul: progress bar dengan pesan yang jelas, bukan spinner tanpa informasi. Kalau sampai batas waktu, ada tombol retry yang bisa diklik — bukan halaman yang terus muter sendiri."
+
+**[Layar: AFTER — tampilan mobile]**
+
+> "Semua ini juga responsif. Di layar mobile 390px, kartu dan tabel tetap terbaca dengan baik, tanpa teks yang terpotong."
+
+---
+
+## ▶ BAGIAN 5 — BUKTI TEST DAN PENUTUP (3:45 – 4:15)
+
+**[Layar: Terminal — RSpec running]**
+
+> "Terakhir, bukti bahwa ini bukan hanya terlihat bagus — tapi juga benar secara teknis. Saya menjalankan RSpec sekarang."
+
+*(Tunggu output terminal muncul)*
+
+**[Layar: Terminal — output "14 examples, 0 failures"]**
+
+> "14 test, 0 kegagalan. Test ini mencakup: Engine yang menghasilkan data benar, controller yang memblokir akses lintas tenant, dan controller override yang tidak menghancurkan laporan yang sudah ada."
+
+**[Layar: Kembali ke halaman Fit/Gap Report yang sudah revamp]**
+
+> "Ada satu hal yang saya sangat banggakan: saya sengaja menanamkan bug di branch terpisah — menyetel `required_level` menjadi nil — dan RSpec langsung menangkap 3 kegagalan. Itu bukti bahwa test suite ini benar-benar bisa mendeteksi regresi, bukan sekadar formalitas."
+
+> "Jadi, dalam satu vertical slice yang fokus, saya berhasil memperbaiki tiga bug P0, memenuhi UU PDP, membangun UI yang bisa dipahami recruiter dalam tiga detik, dan membuktikan semuanya dengan automated test. Terima kasih sudah menonton."
+
+---
+
+## Catatan Pengucapan untuk Istilah Teknis
+
+| Istilah | Cara Baca |
+|---|---|
+| Fit/Gap | "fit — gap" |
+| RSpec | "ar-es-pek" |
+| Sidekiq | "said-kik" |
+| HTTP 202 | "hach-ti-ti-pi — dua ratus dua" |
+| API | "ei-pi-ai" |
+| UU PDP | "u-u — pe-de-pe" |
+| Tenant | "te-nant" |
+| ActiveRecord | "aktif-re-kord" |
+| Transaction | "tran-sak-si" |
+| Polling | "po-ling" |
+| Override | "over-ride" |
+| Frontend / Backend | dibaca apa adanya |
+
+---
+
+## Checklist Sebelum Rekam
+
+- [ ] Browser sudah buka halaman Fit/Gap Report yang revamp
+- [ ] Terminal siap untuk menjalankan `bundle exec rspec`
+- [ ] Volume microphone dicek, tidak ada noise
+- [ ] Screen recording dimulai sebelum mulai bicara
+- [ ] Pastikan tidak ada notifikasi popup saat merekam
+- [ ] Jalankan RSpec live di depan kamera — jangan gunakan rekaman lama
+
+---
+
+## Checklist Setelah Rekam
+
+- [ ] Durasi video antara 3 menit 45 detik – 5 menit
+- [ ] RSpec output terlihat jelas di layar
+- [ ] Semua screenshot AFTER muncul di layar saat dijelaskan
+- [ ] Tidak ada istilah yang salah (misalnya menyebut "expected_level" saat seharusnya "required_level")
+- [ ] Upload ke platform yang ditentukan dan salin URL video ke compliance matrix

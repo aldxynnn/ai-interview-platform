@@ -5,7 +5,8 @@ require 'prawn/table'
 
 Prawn::Fonts::AFM.hide_m17n_warning = true
 
-OUTPUT_PATH = '/workspace/assessment/final-submission-report.pdf'
+OUTPUT_PATH    = File.expand_path('../../assessment/final-submission-report.pdf', __dir__)
+SCREENSHOT_DIR = File.expand_path('screenshots', __dir__)
 
 pdf = Prawn::Document.new(
   page_size: 'A4',
@@ -173,14 +174,14 @@ end
 embed_screenshot(
   pdf,
   "BEFORE: Blank Required Column & Hidden Override Indicators (P0 Defect)",
-  "/workspace/assessment/deliverables/screenshots/before/BEFORE_01_FitGap_Blank_Required_Level.png",
+  File.join(SCREENSHOT_DIR, "before", "BEFORE_01_FitGap_Blank_Required_Level.png"),
   "Figure 1: Required column rendered blank due to contract mismatch; human calibrations invisible."
 )
 
 embed_screenshot(
   pdf,
   "AFTER: Recruiter Executive Summary & Match Rate (Monozukuri UX)",
-  "/workspace/assessment/deliverables/screenshots/after/AFTER_01_FitGap_Recruiter_Executive_Summary.png",
+  File.join(SCREENSHOT_DIR, "after", "AFTER_01_FitGap_Recruiter_Executive_Summary.png"),
   "Figure 2: 83% Competency Fit Rate, recommendation verdict, and 6 KPI metric boxes."
 )
 
@@ -189,21 +190,21 @@ pdf.start_new_page
 embed_screenshot(
   pdf,
   "AFTER: 5-Column Level Progression & Assessor Calibration Callout",
-  "/workspace/assessment/deliverables/screenshots/after/AFTER_02_FitGap_Explicit_Level_Progression.png",
+  File.join(SCREENSHOT_DIR, "after", "AFTER_02_FitGap_Explicit_Level_Progression.png"),
   "Figure 3: Required level, AI score (with confidence dot), calibrated level, and assessor justification callout."
 )
 
 embed_screenshot(
   pdf,
   "AFTER: Interactive Tabbed Category Filtering",
-  "/workspace/assessment/deliverables/screenshots/after/AFTER_03_FitGap_Interactive_Tabbed_Filtering.png",
+  File.join(SCREENSHOT_DIR, "after", "AFTER_03_FitGap_Interactive_Tabbed_Filtering.png"),
   "Figure 4: 1-click filtering by All Skills, Fit, Gaps, Overrides, and Unassessed."
 )
 
 embed_screenshot(
   pdf,
   "AFTER: Bounded Polling & Progress Indicator Guard",
-  "/workspace/assessment/deliverables/screenshots/after/AFTER_05_FitGap_Controlled_Generating_and_Timeout.png",
+  File.join(SCREENSHOT_DIR, "after", "AFTER_05_FitGap_Controlled_Generating_and_Timeout.png"),
   "Figure 5: HTTP 202 protocol with visual progress bar and 15-attempt safety guard preventing duplicate job floods."
 )
 
@@ -212,14 +213,14 @@ pdf.start_new_page
 embed_screenshot(
   pdf,
   "AFTER: Mobile Viewport Responsiveness (390px)",
-  "/workspace/assessment/deliverables/screenshots/after/AFTER_08_FitGap_Mobile_Responsive_View.png",
+  File.join(SCREENSHOT_DIR, "after", "AFTER_08_FitGap_Mobile_Responsive_View.png"),
   "Figure 6: Responsive card layout for mobile viewports without text truncation."
 )
 
 embed_screenshot(
   pdf,
   "AFTER: Automated Test Proof — Tenant Isolation & UU PDP Protection",
-  "/workspace/assessment/deliverables/screenshots/after/AFTER_09_MultiTenant_UU_PDP_404_Enforcement.png",
+  File.join(SCREENSHOT_DIR, "after", "AFTER_09_MultiTenant_UU_PDP_404_Enforcement.png"),
   "Figure 7: RSpec test output proving cross-tenant access is strictly blocked with HTTP 404."
 )
 
