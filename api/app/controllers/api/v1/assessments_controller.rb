@@ -10,7 +10,7 @@ module Api
       # GET /api/v1/assessments
       def index
         assessments = paginate(
-          Assessment.includes(:sessions).order(created_at: :desc)
+          Assessment.where(tenant_id: current_tenant_id).includes(:sessions).order(created_at: :desc)
         )
 
         json_response(
@@ -26,7 +26,7 @@ module Api
 
       # POST /api/v1/assessments
       def create
-        assessment = Assessment.new(assessment_params)
+        assessment = Assessment.new(assessment_params.merge(tenant_id: current_tenant_id))
         assessment.created_by = current_user.id
 
         if assessment.save
@@ -56,7 +56,7 @@ module Api
       private
 
       def set_assessment
-        @assessment = Assessment.find(params[:id])
+        @assessment = Assessment.where(tenant_id: current_tenant_id).find(params[:id])
       rescue ActiveRecord::RecordNotFound
         json_error("Assessment not found", :not_found)
       end
