@@ -9,7 +9,7 @@ module Api
 
       # GET /api/v1/vacancies
       def index
-        vacancies = paginate(Vacancy.order(created_at: :desc))
+        vacancies = paginate(Vacancy.where(tenant_id: current_tenant_id).order(created_at: :desc))
 
         json_response(
           vacancies: vacancies.map(&method(:vacancy_json)),
@@ -24,7 +24,7 @@ module Api
 
       # POST /api/v1/vacancies
       def create
-        vacancy = Vacancy.new(vacancy_params)
+        vacancy = Vacancy.new(vacancy_params.merge(tenant_id: current_tenant_id))
         vacancy.created_by = current_user.id
 
         if vacancy.save
@@ -52,7 +52,7 @@ module Api
       private
 
       def set_vacancy
-        @vacancy = Vacancy.find(params[:id])
+        @vacancy = Vacancy.where(tenant_id: current_tenant_id).find(params[:id])
       rescue ActiveRecord::RecordNotFound
         json_error("Vacancy not found", :not_found)
       end
