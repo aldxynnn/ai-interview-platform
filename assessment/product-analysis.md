@@ -40,6 +40,15 @@ Severity describes potential impact inferred from the code path; it is not a cla
 | P2 | Specification gap | Fit/Gap did not offer an upload path to turn a vacancy PDF into structured, reviewable role requirements. | Recruiters had to manually transcribe job descriptions before comparing a candidate.
 | P2 | Specification gap | The baseline did not define a lifecycle contract for report refreshes, stale jobs, and the availability of the last successful report. | UI and background processing could disagree about whether a report was ready or lost. |
 | P2 | Specification gap | The brief expects automated regression and a seeded fault test, but the baseline tree did not include an established spec suite or frontend test runner. | Changes would be difficult to prove and future regressions could escape review. |
+| P1 | Defective implementation | Gemini client configured Faraday retry middleware without explicitly requiring `faraday/retry`, and defaulted to retired Gemini 2.0 text model IDs. | Portfolio generation could fail before the provider request; the assessor saw only a generic failure. |
+| P2 | Defective implementation | The fit/gap engine returned `expected_level`, while the comparison table rendered `required_level`. | Required-level labels could render as missing/undefined even when the report was generated. |
+| P2 | Specification gap | Fit/Gap did not offer an upload path to turn a vacancy PDF into structured, reviewable role requirements. | Recruiters had to manually transcribe job descriptions before comparing a candidate. |
+
+## Issues confirmed after the first implementation pass
+
+- **Portfolio generation:** CI exposed that the Gemini client raised `Faraday::Error` while configuring retry middleware because `faraday/retry` was not required. The source also defaulted to retired Gemini 2.0 text model IDs. The implementation now requires the middleware, uses the `v1beta` GenerateContent endpoint, maps legacy model identifiers to `gemini-3.8-flash`, and keeps transient worker failures retryable instead of prematurely setting the portfolio to failed. See the failing pre-fix run and passing API job recorded in the verification plan.
+- **Fit/gap presentation:** the API now returns both the internal `expected_level` and the UI contract `required_level`, and regression assertions cover the latter.
+- **PDF workflow:** a text-based job-description PDF can be uploaded from the Fit/Gap page or vacancy creation flow. The extracted role and skill levels are shown for human review before the assessor chooses to run the comparison. The original PDF is not persisted.
 
 ## Constraint signal to a Technical Lead
 

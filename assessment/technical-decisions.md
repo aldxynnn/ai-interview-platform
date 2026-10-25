@@ -44,6 +44,12 @@ Use explicit tenant-constrained lookups in controllers and repeat the portfolio/
 - [ ] Retry initiates a new generation when a report is failed; it does not merely re-fetch the same failed payload.
 - [ ] Error messages are actionable and do not expose raw backend exceptions.
 
+## Implementation status (not an end-to-end certification)
+
+- Implemented on the new branch: tenant-constrained assessor lookups, service/worker tenant invariant, atomic portfolio skill replacement, fit/gap lifecycle versioning, current Gemini text endpoint/model handling, fit/gap UI contract, portfolio retry recovery, PDF vacancy import and review UI.
+- Automated checks: service-level RSpec, frontend component tests, type-check, production build, and seeded fault proof.
+- Still not claimed: real PDF upload through a running Rails/PostgreSQL app, live Gemini call with the user's API key, browser walkthrough, responsive screenshots, or video demo. Those require a runnable environment and valid service credentials.
+
 ## Migration and rollback
 
 The fit/gap lifecycle migration adds status, error, version, and start-time columns with safe defaults for existing reports. Rollback is the migration's standard reverse operation. Before deploying to a shared database, apply the migration in staging and verify old report rows default to `complete`; do not run it against production without the normal release approval.
