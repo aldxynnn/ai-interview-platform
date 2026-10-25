@@ -22,6 +22,8 @@ export default function PortfolioPage() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [selectedVacancy, setSelectedVacancy] = useState<string>("");
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [candidateName, setCandidateName] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -35,7 +37,8 @@ export default function PortfolioPage() {
       } else if (data.portfolio) {
         setPortfolio(data.portfolio);
         setGenerating(false);
-        setPageError(data.portfolio.generation_status === "failed" ? (data.error || "Portfolio generation failed. You can retry.") : null);
+        setPageError(null);
+        setRetryError(null);
         const overrideMap: Record<number, AssessorOverride> = {};
         (data.portfolio.overrides ?? []).forEach((o: AssessorOverride) => {
           overrideMap[o.portfolio_skill_id] = o;
@@ -60,6 +63,21 @@ export default function PortfolioPage() {
 
   // Poll while generating
   usePolling(fetchPortfolio, 5000, generating);
+
+  const handleRetryPortfolio = async () => {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      const res = await sessionsApi.regeneratePortfolio(Number(sessionId));
+      if (res.data.portfolio) setPortfolio(res.data.portfolio);
+      setPageError(null);
+      setGenerating(true);
+    } catch {
+      setRetryError("Retry could not be queued. Please try again in a moment.");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const handleOverrideSaved = (skillId: number, override: AssessorOverride) => {
     setOverrides((prev) => ({ ...prev, [skillId]: override }));
@@ -163,7 +181,7 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {pageError && (
+      {pageError && portfolio?.generation_status !== "failed" && (
         <div role="alert" className="rounded-lg border border-destructive/40 p-4 space-y-2">
           <p className="text-sm text-destructive">{pageError}</p>
           <Button variant="outline" size="sm" onClick={() => { setPageError(null); void fetchPortfolio(); }}>Retry</Button>
@@ -185,17 +203,17 @@ export default function PortfolioPage() {
 
       {/* Failed state */}
       {!generating && portfolio?.generation_status === "failed" && (
-        <div className="border border-destructive/40 rounded-lg p-6 text-center space-y-3">
-          <p className="text-sm text-destructive">Portfolio generation failed.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await sessionsApi.regeneratePortfolio(Number(sessionId));
-              setGenerating(true);
-            }}
-          >
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+        <div className="border border-destructive/40 bg-destructive/5 rounded-xl p-6 space-y-3">
+          <div className="flex items-start gap-3 text-left">
+            <RefreshCw className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <h2 className="font-semibold">Portfolio belum berhasil dibuat</h2>
+              <p role="alert" className="text-sm text-muted-foreground">{retryError || portfolio.generation_error || "Proses AI gagal setelah beberapa percobaan. Data wawancara tetap tersimpan; coba lagi."}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRetryPortfolio} disabled={retrying}>
+            {retrying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+            {retrying ? "Mencoba ulang..." : "Coba lagi"}
           </Button>
         </div>
       )}

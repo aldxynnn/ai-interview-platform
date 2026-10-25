@@ -8,7 +8,7 @@ module Portfolios
     def initialize(session:, gemini_client: nil)
       @session = session
       @gemini_client = gemini_client || Gemini::HttpClient.new(
-        model:   ENV.fetch('GEMINI_PRO_MODEL', 'gemini-2.0-pro-001'),
+        model:   ENV.fetch('GEMINI_PRO_MODEL', 'gemini-3.8-flash'),
         timeout: 180  # up to 3 minutes for large transcripts
       )
     end
@@ -31,8 +31,10 @@ module Portfolios
       Rails.logger.info("[N10] Portfolio generated for session #{@session.id}")
       portfolio
     rescue StandardError => e
-      portfolio&.update!(generation_status: 'failed', generation_error: 'Portfolio generation failed. Please retry or contact support.')
-      Rails.logger.error("[N10] Portfolio generation failed for session #{@session.id} error_class=#{e.class.name}")
+      # Sidekiq owns the terminal failed state after retries are exhausted.
+      # Failing here would stop UI polling after the first transient error.
+      provider_status = e.respond_to?(:status) ? e.status : nil
+      Rails.logger.error("[N10] Portfolio generation attempt failed session_id=#{@session.id} error_class=#{e.class.name} provider_status=#{provider_status || 'n/a'}")
       raise
     end
 

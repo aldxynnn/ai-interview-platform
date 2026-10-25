@@ -2,7 +2,11 @@
 
 module Gemini
   class HttpClient
-    BASE_URL = 'https://generativelanguage.googleapis.com/v1'
+    BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
+    LEGACY_MODEL_ALIASES = {
+      'gemini-2.0-pro-001' => 'gemini-3.8-flash',
+      'gemini-2.0-flash-001' => 'gemini-3.8-flash'
+    }.freeze
 
     class ApiError < StandardError
       attr_reader :status, :body
@@ -18,7 +22,8 @@ module Gemini
     class TimeoutError < ApiError; end
 
     def initialize(model: nil, api_key: nil, timeout: 60)
-      @model = model
+      configured_model = model || ENV.fetch('GEMINI_PRO_MODEL', 'gemini-3.8-flash')
+      @model = LEGACY_MODEL_ALIASES.fetch(configured_model, configured_model)
       @api_key = api_key || ENV.fetch('GEMINI_API_KEY')
       @timeout = timeout
       @connection = build_connection
@@ -63,7 +68,7 @@ module Gemini
           retry_block: ->(env, _opts, retries, exc) {
             retry_after = env&.response_headers&.[]('retry-after')&.to_i
             sleep([retry_after || 1, 30].min) if env&.status == 429
-            Rails.logger.warn("[Gemini::HttpClient] Retry ##{retries} for #{@model}: #{exc&.message}")
+            Rails.logger.warn("[Gemini::HttpClient] Retry ##{retries} for #{@model} error_class=#{exc&.class&.name}")
           }
         }
         f.options.timeout = @timeout
@@ -75,7 +80,7 @@ module Gemini
     def parse_response(response)
       unless response.success?
         raise RateLimitError.new("Rate limited", status: response.status, body: response.body) if response.status == 429
-        Rails.logger.error("[Gemini::HttpClient] API error #{response.status}: #{response.body}")
+        Rails.logger.error("[Gemini::HttpClient] API error status=#{response.status} model=#{@model}")
         raise ApiError.new("API returned #{response.status}", status: response.status, body: response.body)
       end
 
