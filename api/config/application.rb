@@ -20,7 +20,7 @@ module AiInterview
     config.api_only = true
 
     # Auto-load paths
-    config.autoload_paths = config.autoload_paths + %W[
+    config.autoload_paths += %W[
       #{config.root}/app/auth
       #{config.root}/app/lib
       #{config.root}/app/middlewares
