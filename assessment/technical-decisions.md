@@ -38,6 +38,8 @@ Use explicit tenant-constrained lookups in controllers and repeat the portfolio/
 
 ### UI recovery
 - [ ] Loading, generating, failed, retry, and export-error states are visible and accessible.
+- [ ] A recruiter can upload a text-based PDF vacancy description (10 MB / 50 pages maximum); invalid, encrypted, scanned/no-text, oversized, or unparseable PDFs get a clear recovery message.
+- [ ] AI-extracted vacancy details are shown for human review before fit/gap generation; extracted levels must be 1–5 and the source PDF is not persisted.
 - [ ] When refresh fails, the previous successful fit/gap report remains on screen.
 - [ ] Retry initiates a new generation when a report is failed; it does not merely re-fetch the same failed payload.
 - [ ] Error messages are actionable and do not expose raw backend exceptions.
@@ -47,6 +49,9 @@ Use explicit tenant-constrained lookups in controllers and repeat the portfolio/
 The fit/gap lifecycle migration adds status, error, version, and start-time columns with safe defaults for existing reports. Rollback is the migration's standard reverse operation. Before deploying to a shared database, apply the migration in staging and verify old report rows default to `complete`; do not run it against production without the normal release approval.
 
 ## Known trade-offs
+
+- The PDF-import flow currently supports text-based PDFs with selectable text; scanned-image OCR is explicitly not supported. The imported vacancy is saved as a draft-like record and surfaced for review, but request-level integration against a real Rails/PostgreSQL environment and a live Gemini API call remain to be verified.
+- The Gemini client was not loading `faraday/retry` explicitly and pointed at retired Gemini 2.0 model identifiers. Both issues are corrected in this branch, and client construction is covered by RSpec.
 
 - A report with a previous successful result can have `generation_status = generating`; consumers must treat status separately from content freshness.
 - The generation version prevents stale writes but does not provide a distributed lock for every possible concurrent enqueue race. The unique index on portfolio/vacancy remains the final database guard.

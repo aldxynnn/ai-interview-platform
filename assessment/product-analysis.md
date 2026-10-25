@@ -23,6 +23,7 @@ The product turns a structured interview into a skill portfolio with supporting 
 5. Missing expected levels and unassessed skills are not treated as numeric gaps.
 6. Narratives are advisory, bounded to the structured comparison, and do not recommend automatic acceptance/rejection.
 7. Logs and persisted errors do not copy raw provider messages or candidate content.
+8. A recruiter can upload a text-based vacancy PDF from the Fit/Gap flow, review the extracted role/skills/levels, then explicitly choose to run the comparison.
 
 ## Findings at baseline
 
@@ -34,7 +35,9 @@ Severity describes potential impact inferred from the code path; it is not a cla
 | P1 | Defective implementation | Portfolio regeneration deleted old skills before inserting the new AI result, without a transaction around replacement. | A malformed response or mid-write failure could leave partial results and delete linked assessor overrides. |
 | P1 | Defective implementation | Fit/gap regeneration destroyed the prior report before the background job was queued. | Queue failure or job failure could remove the last useful report. |
 | P2 | Defective implementation | The fit/gap engine subtracted an expected level without consistently handling a missing expected level. | Incomplete vacancy data could fail generation instead of clearly showing “not assessed.” |
+| P1 | Defective implementation | Gemini client configured `f.request :retry` without explicitly requiring `faraday/retry`, and the default model/endpoint targeted retired Gemini 2.0 identifiers. | Portfolio generation could fail before producing a result; assessors only saw a generic failed state. |
 | P2 | Defective implementation | Portfolio and fit/gap pages swallowed or under-surfaced some request failures. | Assessors could see a blank/stuck state without a clear recovery path. |
+| P2 | Specification gap | Fit/Gap did not offer an upload path to turn a vacancy PDF into structured, reviewable role requirements. | Recruiters had to manually transcribe job descriptions before comparing a candidate.
 | P2 | Specification gap | The baseline did not define a lifecycle contract for report refreshes, stale jobs, and the availability of the last successful report. | UI and background processing could disagree about whether a report was ready or lost. |
 | P2 | Specification gap | The brief expects automated regression and a seeded fault test, but the baseline tree did not include an established spec suite or frontend test runner. | Changes would be difficult to prove and future regressions could escape review. |
 

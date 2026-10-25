@@ -5,7 +5,8 @@
 The new branch adds:
 - RSpec unit coverage for portfolio output validation: valid payload, out-of-range level, missing arrays, and invalid evidence type.
 - RSpec unit coverage for fit/gap tenant mismatch, unassessed skill behavior, and missing expected level.
-- Vitest/React Testing Library coverage for fit/gap error recovery and retaining the prior report during a failed refresh.
+- Vitest/React Testing Library coverage for portfolio retry recovery, fit/gap error recovery, retaining the previous report during refresh, and PDF-import client validation.
+- RSpec unit coverage for PDF-import schema validation and current Gemini model/endpoint selection.
 - GitHub Actions jobs for API specs, frontend component tests, and frontend type-check/production build.
 
 Run locally:
@@ -32,8 +33,9 @@ An unsafe normalization pattern in the baseline used `to_i.clamp(1, 5)` for AI-p
 
 ## Verification results and boundaries
 
-- [CI run 40218620332](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40218620332) passed on branch head `c0edc6e`: API RSpec 8 examples / 0 failures; frontend component tests 2 passed; TypeScript check and production build succeeded.
-- Earlier successful run [40218574512](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40218574512) also passed after restoring an unrelated, unverified Rails autoload-path line to its baseline.
+- The initial added Gemini client specs failed before the fix because constructing `Gemini::HttpClient` raised `Faraday::Error`: the app configured Faraday's retry middleware but never explicitly loaded `faraday/retry`. This failure was observed in [CI run 40222875850](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40222875850). The client now requires the middleware, uses the `v1beta` GenerateContent endpoint, and maps retired Gemini 2.0 text model IDs to `gemini-3.8-flash`.
+- [CI run 40222969780](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40222969780) passed on code head `fdbbc7c`: API RSpec 15 examples / 0 failures; frontend tests 4 passed; TypeScript check and production build succeeded. A newer UI regression test for portfolio retry is being checked on the current branch head.
+- PDF import now has a tenant-authenticated endpoint, in-memory text extraction, file-size/page/text limits, structured output validation, and a review step before starting fit/gap. The automated tests mock the upload UI and unit-test extraction-output validation; they do not yet prove a real PDF request through Rails or a live Gemini API call.
 - The local container could not clone GitHub because DNS resolution for `github.com` failed; no local database-backed integration test or manual browser walkthrough is claimed.
 - An initial attempt to boot the full Rails environment from the new test helper failed with `NameError: uninitialized constant AudioWebsocketMiddleware`. The current RSpec suite therefore exercises service logic without booting the full Rails app; integration boot and request-level tenant authorization remain verification gaps.
 - No screenshots or video are included yet because the UI was not run in a browser in this environment. Capture genuine screenshots of loading, failed refresh with retained report, successful report, mobile/responsive layout, and export recovery when a local environment is available. Record a real 3–5 minute demo link before final submission.
