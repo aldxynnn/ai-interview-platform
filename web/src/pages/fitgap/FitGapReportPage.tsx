@@ -11,7 +11,7 @@ import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
-import type { FitGapReport, Portfolio } from "@/types";
+import type { FitGapReport, Portfolio, Vacancy } from "@/types";
 
 export default function FitGapReportPage() {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ export default function FitGapReportPage() {
   }>();
 
   const [report, setReport] = useState<FitGapReport | null>(null);
+  const [importedVacancy, setImportedVacancy] = useState<Vacancy | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -157,7 +158,34 @@ export default function FitGapReportPage() {
         )}
       </div>
 
-      <VacancyPdfImportCard compact onImported={(vacancy) => navigate(`/assessments/${id}/sessions/${sessionId}/fitgap/${vacancy.id}`)} />
+      <VacancyPdfImportCard compact onImported={setImportedVacancy} />
+      {importedVacancy && (
+        <Card className="border-primary/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Periksa hasil ekstraksi sebelum analisis</CardTitle>
+            <p className="text-sm text-muted-foreground">AI membuat draf lowongan. Pastikan jabatan, skill, dan level sesuai dokumen sebelum menjalankan perbandingan.</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="font-semibold">{importedVacancy.role_title}</p>
+              {importedVacancy.competency_expectations && <p className="text-sm text-muted-foreground mt-1">{importedVacancy.competency_expectations}</p>}
+            </div>
+            <div className="space-y-2">
+              {(importedVacancy.skills || []).map((skill, index) => (
+                <div key={skill.id ?? `${skill.skill_label}-${index}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+                  <span>{skill.skill_label}</span><span className="text-muted-foreground shrink-0">Required L{skill.expected_level}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Draf tersimpan sebagai lowongan baru. Kamu bisa mengedit detailnya di menu Vacancies.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => navigate(`/assessments/${id}/sessions/${sessionId}/fitgap/${importedVacancy.id}`)}>Gunakan untuk Fit/Gap</Button>
+              <Button variant="outline" onClick={() => navigate(`/vacancies/${importedVacancy.id}/edit`)}>Edit lowongan</Button>
+              <Button variant="ghost" onClick={() => setImportedVacancy(null)}>Batal</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {pageError && (
         <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
