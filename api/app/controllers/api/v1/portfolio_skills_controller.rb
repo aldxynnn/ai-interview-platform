@@ -7,12 +7,12 @@ module Api
 
       before_action :set_portfolio_skill
 
-      # POST /api/v1/portfolio-skills/:id/override
       def override
         existing = @portfolio_skill.assessor_override
+        attributes = override_params.merge(overridden_by: current_user.id, overridden_at: Time.current)
 
         if existing
-          if existing.update(override_params.merge(overridden_by: current_user.id, overridden_at: Time.current))
+          if existing.update(attributes)
             regenerate_stale_fitgap_reports
             json_response(override: override_json(existing))
           else
@@ -20,13 +20,8 @@ module Api
           end
         else
           new_override = @portfolio_skill.build_assessor_override(
-            override_params.merge(
-              ai_level:      @portfolio_skill.ai_level,
-              overridden_by: current_user.id,
-              overridden_at: Time.current
-            )
+            attributes.merge(ai_level: @portfolio_skill.ai_level)
           )
-
           if new_override.save
             regenerate_stale_fitgap_reports
             json_response({ override: override_json(new_override) }, :created)
@@ -40,15 +35,15 @@ module Api
 
       def regenerate_stale_fitgap_reports
         portfolio = @portfolio_skill.portfolio
-        FitGapReport.where(portfolio_id: portfolio.id).each do |report|
-          vacancy_id = report.vacancy_id
-          report.destroy
-          FitGapGeneratorWorker.perform_async(portfolio.id, vacancy_id)
+        FitGapReport.where(portfolio_id: portfolio.id).find_each do |report|
+          report.update!(generation_status: "stale", generation_error: nil)
+          FitGap::ReportScheduler.enqueue(portfolio: portfolio, vacancy: report.vacancy)
         end
       end
 
       def set_portfolio_skill
-        @portfolio_skill = PortfolioSkill.joins(:portfolio)
+        @portfolio_skill = PortfolioSkill.joins(portfolio: :session)
+                                         .where(sessions: { tenant_id: current_tenant_id })
                                          .find(params[:id])
       rescue ActiveRecord::RecordNotFound
         json_error("Portfolio skill not found", :not_found)
@@ -60,13 +55,13 @@ module Api
 
       def override_json(override)
         {
-          id:                 override.id,
+          id: override.id,
           portfolio_skill_id: override.portfolio_skill_id,
-          ai_level:           override.ai_level,
-          override_level:     override.override_level,
-          assessor_notes:     override.assessor_notes,
-          overridden_by:      override.overridden_by,
-          overridden_at:      override.overridden_at
+          ai_level: override.ai_level,
+          override_level: override.override_level,
+          assessor_notes: override.assessor_notes,
+          overridden_by: override.overridden_by,
+          overridden_at: override.overridden_at
         }
       end
     end

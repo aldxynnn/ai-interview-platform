@@ -1,97 +1,51 @@
-# Local Setup
+# API local setup
+
+The API uses Ruby 3.3.2, Rails 7, PostgreSQL, Redis/Sidekiq, and the Gemini API. Run commands from the api directory.
 
 ## Prerequisites
 
-- Ruby (see `.ruby-version`)
-- Node.js + npm
-- PostgreSQL (running locally or via Docker)
-- Docker (for Redis)
+- Ruby 3.3.2 (see .ruby-version)
+- Node.js and npm for the frontend
+- PostgreSQL and Redis
+- A Gemini API key for live AI generation
 
----
+## Configure environment
 
-## 1. Environment variables
+Copy config/application.yml.sample to config/application.yml and fill in the required local values. Do not commit this file. Configure SECRET_KEY_BASE, database connection values, GEMINI_API_KEY, Gemini model names, REDIS_URL, ALLOWED_ORIGINS, and APP_BASE_URL.
 
-```bash
-cp config/application.yml.sample config/application.yml
-```
+## Install and start the API
 
-Fill in the required values in `config/application.yml`:
+    bundle install
+    bundle exec rails db:prepare
+    docker run --rm -p 6379:6379 --name rakamin-redis redis:alpine
 
-| Variable | Description |
-|---|---|
-| `SECRET_KEY_BASE` | Must match `rakamin-api` — JWT tokens are shared |
-| `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD` | Shared PostgreSQL instance |
-| `GEMINI_API_KEY` | Google AI Studio API key |
-| `GEMINI_LIVE_MODEL` | e.g. `gemini-3.1-flash-live-preview` |
-| `GEMINI_ANALYSIS_MODEL` | e.g. `gemini-2.0-flash-001` |
-| `GEMINI_PRO_MODEL` | e.g. `gemini-2.5-pro` |
-| `REDIS_URL` | e.g. `redis://localhost:6379/1` |
-| `ALLOWED_ORIGINS` | CORS origin for the frontend, e.g. `http://localhost:5173` |
-| `APP_BASE_URL` | Backend base URL, e.g. `http://localhost:3001` |
+In separate terminals, from api:
 
----
+    bundle exec sidekiq -r ./config/environment.rb -C config/sidekiq.yml
+    bundle exec rails server
 
-## 2. Install dependencies
+Puma listens on port 3001 by default.
 
-```bash
-bundle install
-```
+## Start the frontend
 
----
+From the repository root:
 
-## 3. Set up the database
+    cd web
+    npm install
+    cp .env.example .env
+    npm run dev
 
-```bash
-rails db:create   # skip if DB already exists
-rails db:migrate
-rails db:seed
-```
+The Vite app is available at http://localhost:5173. The example environment file points REST and WebSocket traffic to the API default port 3001. Replace the development token and tenant values with credentials for your local environment.
 
----
+## Verification
 
-## 4. Start Redis via Docker
+From api:
 
-```bash
-docker run -d -p 6379:6379 --name redis redis:alpine
-```
+    bundle exec rspec
 
----
+From web:
 
-## 5. Start Sidekiq
+    npm test
+    npm run build
 
-```bash
-bundle exec sidekiq -r ./config/environment.rb -C config/sidekiq.yml
-```
-
----
-
-## 6. Start the Rails server
-
-```bash
-bundle exec rails server
-```
-
-Runs on **port 3001** by default.
-
----
-
-## 7. Start the frontend
-
-```bash
-cd ../ai-interview-web
-npm install
-npm run dev
-```
-
-Runs on **port 5173** by default.
-
----
-
-## All services at a glance
-
-| Service | Command | Port |
-|---|---|---|
-| Redis | `docker run -d -p 6379:6379 --name redis redis:alpine` | 6379 |
-| Sidekiq | `bundle exec sidekiq -r ./config/environment.rb -C config/sidekiq.yml` | — |
-| Rails API | `bundle exec rails server` | 3001 |
-| Frontend | `npm run dev` (in `ai-interview-web/`) | 5173 |
+AI-backed workflows require valid local Gemini credentials. Focused tests should use synthetic data and mocked AI responses and must not require a live provider key.
