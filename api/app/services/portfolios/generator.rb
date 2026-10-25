@@ -224,7 +224,7 @@ module Portfolios
       evidence = skill[:evidence]
       summary = skill[:competency_summary].to_s.strip
 
-      raise InvalidResponse, "Generated skill needs a label and level from 1 to 5" unless label.present? && level.match?(/\\A[1-5]\\z/)
+      raise InvalidResponse, "Generated skill needs a label and level from 1 to 5" unless label.present? && level.match?(/\A[1-5]\z/)
       raise InvalidResponse, "Generated skill has an invalid confidence level" unless PortfolioSkill::CONFIDENCE_LEVELS.include?(confidence)
       raise InvalidResponse, "Generated skill evidence must be an array of strings" unless evidence.is_a?(Array) && evidence.all? { |quote| quote.is_a?(String) }
       raise InvalidResponse, "Generated skill needs a competency summary" if summary.blank?
@@ -240,7 +240,7 @@ module Portfolios
     end
 
     def skill_identity(skill_id:, skill_label:, discovered:)
-      normalized_label = skill_label.to_s.strip.downcase.gsub(/\\s+/, " ")
+      normalized_label = skill_label.to_s.strip.downcase.gsub(/\s+/, " ")
       return "discovered:#{normalized_label}" if discovered
 
       skill_id.present? ? "configured:id:#{skill_id.to_s.strip}" : "configured:label:#{normalized_label}"
