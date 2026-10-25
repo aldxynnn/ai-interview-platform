@@ -40,7 +40,7 @@ Severity describes potential impact inferred from the code path; it is not a cla
 
 ## Constraint signal to a Technical Lead
 
-Tenant ownership is spread across request middleware, model default scopes, associations, controllers, and asynchronous jobs. A controller-only fix is fragile; the critical path needs explicit tenant checks at request boundaries and at the fit/gap service boundary. The local environment was not available in this run because GitHub clone access from the execution container failed at DNS resolution, so CI and source review are the available verification paths. A full manual walkthrough and real screenshots remain separate release gates.
+Tenant ownership is spread across request middleware, model default scopes, associations, controllers, and asynchronous jobs. A controller-only fix is fragile; the critical path needs explicit tenant checks at request boundaries and at the fit/gap service boundary. The local environment was not available in this run because GitHub clone access from the execution container failed at DNS resolution, so CI and source review are the available verification paths. An initial attempt to boot the full Rails app for specs also failed with `NameError: uninitialized constant AudioWebsocketMiddleware`; the current suite avoids app boot and does not prove request-level integration. A full manual walkthrough and real screenshots remain separate release gates.
 
 ## UU PDP considerations
 
