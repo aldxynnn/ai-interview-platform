@@ -201,7 +201,7 @@ export default function PortfolioPage() {
       )}
 
       {/* Ready state */}
-      {!generating && portfolio?.generation_status === "complete" && (
+      {!generating && (portfolio?.generation_status === "complete" || (portfolio?.generation_status === "failed" && portfolio.skills.length > 0)) && (
         <>
           {/* Configured skills */}
           <div className="space-y-3">
