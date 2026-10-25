@@ -58,7 +58,8 @@ module Api
         end
 
         if format == "pdf"
-          vacancy = params[:vacancy_id].present? ? Vacancy.find_by(id: params[:vacancy_id]) : nil
+          vacancy = params[:vacancy_id].present? ? Vacancy.where(tenant_id: current_tenant_id).find_by(id: params[:vacancy_id]) : nil
+          return json_error("Vacancy not found", :not_found) if params[:vacancy_id].present? && vacancy.nil?
           pdf_data = Exports::PdfGenerator.new(portfolio: @portfolio, vacancy: vacancy).call
 
           return send_data pdf_data,
@@ -79,20 +80,19 @@ module Api
 
       # POST /api/v1/portfolios/:id/regenerate_fitgap
       def regenerate_fitgap
-        portfolio  = Portfolio.find(params[:id])
+        portfolio  = Portfolio.joins(:session).where(sessions: { tenant_id: current_tenant_id }).find(params[:id])
         vacancy_id = params[:vacancy_id]
 
         return json_error("vacancy_id is required", :unprocessable_entity) if vacancy_id.blank?
 
-        vacancy = Vacancy.find_by(id: vacancy_id)
+        vacancy = Vacancy.where(tenant_id: current_tenant_id).find_by(id: vacancy_id)
         return json_error("Vacancy not found", :not_found) unless vacancy
 
         unless portfolio.complete?
           return json_error("Portfolio is not ready (status: #{portfolio.generation_status})", :unprocessable_entity)
         end
 
-        FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)&.destroy
-        FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id)
+        FitGap::GenerationCoordinator.request!(portfolio: portfolio, vacancy: vacancy, force: true)
 
         render json: { status: "generating", message: "Fit/gap report regeneration queued" }, status: :accepted
       rescue ActiveRecord::RecordNotFound
@@ -101,7 +101,7 @@ module Api
 
       # POST /api/v1/portfolios/:id/fitgap
       def fitgap
-        portfolio = Portfolio.find(params[:id])
+        portfolio = Portfolio.joins(:session).where(sessions: { tenant_id: current_tenant_id }).find(params[:id])
 
         vacancy_id = params.dig(:fitgap, :vacancy_id) || params[:vacancy_id]
         return json_error("vacancy_id is required", :unprocessable_entity) if vacancy_id.blank?
@@ -142,7 +142,7 @@ module Api
       private
 
       def set_session
-        @session = Session.find(params[:id])
+        @session = Session.where(tenant_id: current_tenant_id).find(params[:id])
       rescue ActiveRecord::RecordNotFound
         json_error("Session not found", :not_found)
       end
@@ -153,7 +153,7 @@ module Api
         if @session
           @portfolio = @session.portfolio
         else
-          @portfolio = Portfolio.find(params[:id])
+          @portfolio = Portfolio.joins(:session).where(sessions: { tenant_id: current_tenant_id }).find(params[:id])
         end
       rescue ActiveRecord::RecordNotFound
         json_error("Portfolio not found", :not_found)
