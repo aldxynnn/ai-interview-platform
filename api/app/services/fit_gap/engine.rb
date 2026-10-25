@@ -4,9 +4,11 @@ module FitGap
   # N13: Generates a fit/gap report comparing a portfolio against a vacancy.
   # Uses rule-based comparison for skill levels + Gemini Flash for culture narrative.
   class Engine
-    def initialize(portfolio:, vacancy:, gemini_client: nil)
+    def initialize(portfolio:, vacancy:, gemini_client: nil, report: nil, generation_version: nil)
       @portfolio = portfolio
       @vacancy   = vacancy
+      @report = report
+      @generation_version = generation_version
       @gemini_client = gemini_client || Gemini::HttpClient.new(
         model:   ENV.fetch('GEMINI_FLASH_MODEL', 'gemini-2.0-flash-001'),
         timeout: 30
@@ -15,26 +17,45 @@ module FitGap
 
     # Returns the FitGapReport record.
     def call
+      assert_same_tenant!
       skill_comparisons = build_skill_comparisons
       narratives        = generate_narratives(skill_comparisons)
 
-      report = FitGapReport.find_or_initialize_by(
+      report = @report || FitGapReport.find_or_initialize_by(
         portfolio_id: @portfolio.id,
         vacancy_id:   @vacancy.id
       )
 
-      report.update!(
+      attributes = {
         skill_comparisons: skill_comparisons,
         culture_narrative: narratives[:culture],
         overall_narrative: narratives[:overall],
-        generated_at:      Time.current
-      )
+        generated_at: Time.current,
+        generation_status: "complete",
+        generation_error: nil
+      }
+
+      if @generation_version
+        report.with_lock do
+          return report if report.generation_version != @generation_version || report.generation_status != "generating"
+
+          report.update!(attributes)
+        end
+      else
+        report.update!(attributes)
+      end
 
       Rails.logger.info("[N13] Fit/gap report generated: portfolio=#{@portfolio.id} vacancy=#{@vacancy.id}")
       report
     end
 
     private
+
+    def assert_same_tenant!
+      unless @portfolio.session.tenant_id == @vacancy.tenant_id
+        raise ArgumentError, "Portfolio and vacancy must belong to the same tenant"
+      end
+    end
 
     def build_skill_comparisons
       vacancy_skills = @vacancy.vacancy_skills.index_by(&:skill_label)
@@ -102,8 +123,8 @@ module FitGap
         response = @gemini_client.generate_content(prompt, temperature: 0.4)
         data = response.is_a?(Hash) ? response : JSON.parse(response)
         { culture: data['culture_narrative'], overall: data['overall_narrative'] }
-      rescue => e
-        Rails.logger.error("[N13] Narrative generation failed: #{e.message}")
+      rescue StandardError => e
+        Rails.logger.warn("[N13] Narrative fallback used error_class=#{e.class.name}")
         { culture: nil, overall: generate_fallback_narrative(skill_comparisons) }
       end
     end
@@ -126,9 +147,11 @@ module FitGap
         - Exceeds (#{exceeds.count}): #{exceeds.map { |c| "#{c[:skill_label]}: candidate L#{c[:candidate_level]} vs expected L#{c[:expected_level]} (+#{c[:delta]})" }.join(', ')}
         - Not assessed (#{not_assessed.count}): #{not_assessed.map { |c| c[:skill_label] }.join(', ')}
 
-        Write two short narrative paragraphs:
-        1. culture_narrative: 2-3 sentences on culture/competency fit based on the comparison patterns.
-        2. overall_narrative: 2-3 sentence overall hiring recommendation summary.
+        Write two short advisory paragraphs, not a hiring recommendation:
+        1. culture_narrative: 2-3 sentences about context, with uncertainty explicit.
+        2. overall_narrative: summarize the structured comparison, distinguish not assessed from gaps,
+           and state that a human assessor must review evidence and make the final decision.
+        Never recommend automatic rejection or acceptance. Do not infer personality or protected traits.
 
         OUTPUT (JSON only):
         {
@@ -143,7 +166,7 @@ module FitGap
       matches = comparisons.count { |c| c[:result] == 'match' }
       exceeds = comparisons.count { |c| c[:result] == 'exceed' }
 
-      "Candidate shows #{matches} skill matches, #{exceeds} exceeds, and #{gaps} gaps against role requirements."
+      "Structured comparison: #{matches} matches, #{exceeds} above the stated level, and #{gaps} gaps. This is advisory only; an assessor must review the underlying evidence and make the final decision."
     end
   end
 end
