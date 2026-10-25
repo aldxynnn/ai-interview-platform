@@ -23,7 +23,8 @@ describe("ComparisonTable", () => {
   it("does not turn a missing rating into a gap", () => {
     render(<ComparisonTable comparisons={comparisons} />);
     const sqlRow = screen.getByRole("row", { name: /SQL/ });
-    expect(within(sqlRow).getByText("Not assessed")).toBeTruthy();
+    expect(within(sqlRow).getAllByText("Not assessed")).toHaveLength(2);
+    expect(within(sqlRow).queryByText("Gap")).toBeNull();
     expect(within(sqlRow).getByText("L2")).toBeTruthy();
   });
 
