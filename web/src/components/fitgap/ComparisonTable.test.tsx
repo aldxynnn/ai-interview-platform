@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen, within } from "@testing-library/react";
+
+afterEach(() => cleanup());
 import ComparisonTable from "./ComparisonTable";
 import type { SkillComparison } from "@/types";
 
