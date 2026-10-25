@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require "spec_helper"
+require_relative "../../../app/services/fit_gap/engine"
 
 RSpec.describe FitGap::Engine do
   subject(:engine) do
