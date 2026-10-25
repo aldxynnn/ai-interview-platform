@@ -32,8 +32,8 @@ An unsafe normalization pattern in the baseline used `to_i.clamp(1, 5)` for AI-p
 
 ## Verification results and boundaries
 
-- [CI run 40218459355](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40218459355) passed on implementation commit `830785a`: API RSpec 8 examples / 0 failures; frontend component tests 2 passed; TypeScript check and production build succeeded.
-- [CI run 40218574512](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40218574512) is the rerun after a documentation-adjacent cleanup that restored an unrelated, unverified Rails autoload-path line. Check its result before submission.
+- [CI run 40218620332](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40218620332) passed on branch head `c0edc6e`: API RSpec 8 examples / 0 failures; frontend component tests 2 passed; TypeScript check and production build succeeded.
+- Earlier successful run [40218574512](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40218574512) also passed after restoring an unrelated, unverified Rails autoload-path line to its baseline.
 - The local container could not clone GitHub because DNS resolution for `github.com` failed; no local database-backed integration test or manual browser walkthrough is claimed.
 - An initial attempt to boot the full Rails environment from the new test helper failed with `NameError: uninitialized constant AudioWebsocketMiddleware`. The current RSpec suite therefore exercises service logic without booting the full Rails app; integration boot and request-level tenant authorization remain verification gaps.
 - No screenshots or video are included yet because the UI was not run in a browser in this environment. Capture genuine screenshots of loading, failed refresh with retained report, successful report, mobile/responsive layout, and export recovery when a local environment is available. Record a real 3–5 minute demo link before final submission.
