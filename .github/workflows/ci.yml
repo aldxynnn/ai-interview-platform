@@ -41,5 +41,7 @@ jobs:
           node-version: "20"
       - name: Install web dependencies
         run: npm install
+      - name: Run web component tests
+        run: npm test
       - name: Type-check and production build
         run: npm run build
