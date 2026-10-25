@@ -24,21 +24,29 @@ export default function FitGapReportPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async () => {
     if (!portfolio) return;
     try {
       const res = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
-      setReport(res.data.report);
-      setGenerating(false);
+      const nextReport = res.data.report;
+      setReport(nextReport);
+      setGenerating(nextReport.generation_status === "generating" || nextReport.generation_status === "pending");
+      setPageError(nextReport.generation_status === "failed" ? (nextReport.generation_error || "Report generation failed. You can retry.") : null);
     } catch (e: any) {
       if (e?.response?.status === 404) {
         try {
           await portfoliosApi.triggerFitGap(portfolio.id, Number(vacancyId));
           setGenerating(true);
+          setPageError(null);
         } catch {
           setGenerating(false);
+          setPageError("We could not start report generation. Check your connection and retry.");
         }
+      } else {
+        setGenerating(false);
+        setPageError("We could not load this report. Check your connection and retry.");
       }
     }
   }, [portfolio, vacancyId]);
@@ -68,6 +76,8 @@ export default function FitGapReportPage() {
       await portfoliosApi.regenerateFitGap(portfolio.id, Number(vacancyId));
       setReport(null);
       setGenerating(true);
+    } catch {
+      setPageError("Regeneration could not be started. Your previous report is still available.");
     } finally {
       setRegenerating(false);
     }
@@ -77,6 +87,7 @@ export default function FitGapReportPage() {
     if (!portfolio) return;
     setExporting(format);
     try {
+      setPageError(null);
       const res = await portfoliosApi.exportPortfolio(portfolio.id, format, Number(vacancyId));
       const ext = format;
       const blob = format === "pdf"
@@ -88,6 +99,8 @@ export default function FitGapReportPage() {
       a.download = `fitgap-${sessionId}-${vacancyId}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
+    } catch {
+      setPageError("Export failed. Please retry.");
     } finally {
       setExporting(null);
     }
@@ -140,11 +153,18 @@ export default function FitGapReportPage() {
         )}
       </div>
 
+      {pageError && (
+        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+          <p className="text-sm text-destructive">{pageError}</p>
+          <Button variant="outline" size="sm" onClick={() => { setPageError(null); void fetchReport(); }} disabled={regenerating}>Retry</Button>
+        </div>
+      )}
+
       {/* Generating */}
       {generating && (
-        <div className="border rounded-lg p-12 text-center space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Generating fit/gap report...</p>
+        <div className="border rounded-lg p-5 text-center space-y-2" role="status" aria-live="polite">
+          <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">{report?.generation_status === "generating" ? "Refreshing report. The previous result remains available." : "Generating fit/gap report..."}</p>
         </div>
       )}
 
