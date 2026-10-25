@@ -20,7 +20,7 @@ module Api
 
       # POST /api/v1/assessments/:assessment_id/sessions
       def create
-        assessment = Assessment.find(params[:assessment_id])
+        assessment = Assessment.where(tenant_id: current_tenant_id).find(params[:assessment_id])
 
         session = assessment.sessions.new(
           candidate_id:   params.dig(:session, :candidate_id),
