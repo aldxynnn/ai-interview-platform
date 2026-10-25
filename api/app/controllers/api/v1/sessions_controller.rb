@@ -10,7 +10,7 @@ module Api
 
       # GET /api/v1/assessments/:assessment_id/sessions
       def index
-        assessment = Assessment.find(params[:assessment_id])
+        assessment = Assessment.where(tenant_id: current_tenant_id).find(params[:assessment_id])
         sessions = assessment.sessions.order(created_at: :desc)
 
         json_response(sessions: sessions.map(&method(:session_json)))
@@ -156,7 +156,7 @@ module Api
       private
 
       def set_session
-        @session = Session.find(params[:id])
+        @session = Session.where(tenant_id: current_tenant_id).find(params[:id])
       rescue ActiveRecord::RecordNotFound
         json_error("Session not found", :not_found)
       end
