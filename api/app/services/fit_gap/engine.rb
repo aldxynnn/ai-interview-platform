@@ -52,7 +52,7 @@ module FitGap
     private
 
     def assert_same_tenant!
-      if @portfolio.session.tenant_id == @vacancy.tenant_id
+      unless @portfolio.session.tenant_id == @vacancy.tenant_id
         raise ArgumentError, "Portfolio and vacancy must belong to the same tenant"
       end
     end
