@@ -36,7 +36,7 @@ RSpec.describe FitGap::Engine do
 
       comparison = engine.send(:build_skill_comparisons).first
 
-      expect(comparison).to include(result: "not_assessed", candidate_level: nil, expected_level: 3, delta: nil)
+      expect(comparison).to include(result: "not_assessed", candidate_level: nil, expected_level: 3, required_level: 3, delta: nil)
     end
 
     it "does not crash when the expected level is missing" do
@@ -45,7 +45,7 @@ RSpec.describe FitGap::Engine do
 
       comparison = engine.send(:build_skill_comparisons).first
 
-      expect(comparison).to include(result: "not_assessed", candidate_level: nil, expected_level: nil, delta: nil)
+      expect(comparison).to include(result: "not_assessed", candidate_level: nil, expected_level: nil, required_level: nil, delta: nil)
     end
   end
 end
