@@ -37,7 +37,15 @@ module Api
         end
 
         portfolio.update!(generation_status: "pending", generation_error: nil)
-        PortfolioGeneratorWorker.perform_async(@session.id)
+        begin
+          job_id = PortfolioGeneratorWorker.perform_async(@session.id)
+        rescue StandardError
+          job_id = nil
+        end
+        if job_id.blank?
+          portfolio.update!(generation_status: "failed", generation_error: "Portfolio generation could not be queued. Please retry.")
+          return json_error("Portfolio generation could not be queued. Please retry.", :service_unavailable)
+        end
 
         json_response(
           message:   "Portfolio generation queued",
