@@ -9,14 +9,14 @@ export interface Assessment {
   updated_at?: string;
   skills?: AssessmentSkill[];
   latest_session?: {
-    status: "pending" | "active" | "ended";
+    status: "pending" | "active" | "ended" | "failed";
     end_reason?: string | null;
   };
 }
 
 export interface AssessmentSkill {
   id?: number;
-  skill_id?: number;
+  skill_id?: string;
   skill_label: string;
   is_custom: boolean;
   expected_level: number;
@@ -39,7 +39,7 @@ export interface Session {
   candidate_name?: string;
   invite_token: string;
   invite_url: string;
-  status: "pending" | "active" | "ended";
+  status: "pending" | "active" | "ended" | "failed";
   end_reason?: string;
   started_at?: string;
   ended_at?: string;
@@ -49,7 +49,7 @@ export interface Session {
 
 export interface CoverageSkill {
   id: number;
-  skill_id: number;
+  skill_id?: string;
   skill_label: string;
   is_discovered: boolean;
   state: "not_yet" | "initiated" | "partial" | "covered";
@@ -87,11 +87,11 @@ export interface Portfolio {
 
 export interface PortfolioSkill {
   id: number;
-  skill_id?: number;
+  skill_id?: string;
   skill_label: string;
   is_discovered: boolean;
-  ai_level: string;       // "L1" | "L2" | "L3" | "L4" | "L5"
-  ai_confidence: string;  // "high" | "medium" | "low"
+  ai_level: number;
+  ai_confidence: "high" | "medium" | "low";
   evidence: string[];
   competency_summary: string;
 }
@@ -119,31 +119,38 @@ export interface Vacancy {
 
 export interface VacancySkill {
   id?: number;
-  skill_id?: number;
+  skill_id?: string;
   skill_label: string;
   expected_level: number;
   _destroy?: boolean;
 }
 
 export type SkillComparisonResult = "match" | "gap" | "exceed" | "not_assessed";
+export type SkillConfidence = "high" | "medium" | "low";
 
 export interface SkillComparison {
+  skill_id?: string | null;
   skill_label: string;
   required_level: number;
-  candidate_level?: number;
+  candidate_level?: number | null;
   result: SkillComparisonResult;
-  delta?: number;
+  delta?: number | null;
+  confidence?: SkillConfidence | null;
   is_override?: boolean;
 }
+
+export type FitGapGenerationStatus = "queued" | "generating" | "complete" | "failed" | "stale";
 
 export interface FitGapReport {
   id: number;
   portfolio_id: number;
   vacancy_id: number;
+  generation_status: FitGapGenerationStatus;
+  generation_error?: string | null;
   skill_comparisons: SkillComparison[];
-  culture_narrative: string;
-  overall_narrative: string;
-  generated_at: string;
+  culture_narrative?: string | null;
+  overall_narrative?: string | null;
+  generated_at?: string | null;
 }
 
 export interface SkillTaxonomy {
@@ -173,7 +180,6 @@ export interface PaginationMeta {
   per_page: number;
 }
 
-// WebSocket message types
 export type InterviewState =
   | "idle"
   | "hardware_check"

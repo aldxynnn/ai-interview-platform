@@ -58,8 +58,9 @@ module Api
 
       def regenerate_fitgap
         portfolio = find_portfolio_for_tenant!(params[:id])
+        return unless portfolio
         vacancy = find_vacancy!(params[:vacancy_id])
-        return unless portfolio && vacancy
+        return unless vacancy
         return json_error("Portfolio is not ready", :unprocessable_entity) unless portfolio.complete?
 
         report = FitGap::ReportScheduler.enqueue(portfolio: portfolio, vacancy: vacancy, force: true)
@@ -69,9 +70,10 @@ module Api
 
       def fitgap
         portfolio = find_portfolio_for_tenant!(params[:id])
+        return unless portfolio
         vacancy_id = params.dig(:fitgap, :vacancy_id) || params[:vacancy_id]
         vacancy = find_vacancy!(vacancy_id)
-        return unless portfolio && vacancy
+        return unless vacancy
         return json_error("Portfolio is not ready", :unprocessable_entity) unless portfolio.complete?
 
         report = FitGap::ReportScheduler.enqueue(portfolio: portfolio, vacancy: vacancy)
@@ -83,13 +85,16 @@ module Api
 
       def show_fitgap
         portfolio = find_portfolio_for_tenant!(params[:id])
+        return unless portfolio
         vacancy = find_vacancy!(params[:vacancy_id])
-        return unless portfolio && vacancy
+        return unless vacancy
 
         report = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)
         return json_error("Fit/gap report not found", :not_found) unless report
 
-        if report.generating? && (report.generation_started_at.nil? || report.generation_started_at < FitGap::ReportScheduler::LEASE_TIMEOUT.ago)
+        stale = report.generation_status == "stale"
+        lease_expired = report.generating? && (report.generation_started_at.nil? || report.generation_started_at < FitGap::ReportScheduler::LEASE_TIMEOUT.ago)
+        if stale || lease_expired
           report = FitGap::ReportScheduler.enqueue(portfolio: portfolio, vacancy: vacancy) || report
         end
         json_response(report: fit_gap_json(report))
@@ -117,8 +122,15 @@ module Api
       end
 
       def find_vacancy!(id)
-        return json_error("vacancy_id is required", :unprocessable_entity) if id.blank?
-        Vacancy.find_by(id: id) || json_error("Vacancy not found", :not_found)
+        if id.blank?
+          json_error("vacancy_id is required", :unprocessable_entity)
+          return nil
+        end
+        vacancy = Vacancy.find_by(id: id)
+        return vacancy if vacancy
+
+        json_error("Vacancy not found", :not_found)
+        nil
       end
 
       def portfolio_json(portfolio)

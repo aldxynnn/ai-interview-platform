@@ -132,10 +132,19 @@ export default function AssessmentInvitePage() {
   const [newSessionCopied, setNewSessionCopied] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [candidateNameInput, setCandidateNameInput] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [copyFallbackUrl, setCopyFallbackUrl] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
-    const res = await assessmentsApi.getSessions(Number(id));
-    setSessions(res.data.sessions);
+    try {
+      const res = await assessmentsApi.getSessions(Number(id));
+      setSessions(res.data.sessions);
+      setLoadError(null);
+    } catch {
+      setLoadError("Unable to refresh the candidate list. Check your connection and retry.");
+    }
   }, [id]);
 
   useEffect(() => {
@@ -145,7 +154,7 @@ export default function AssessmentInvitePage() {
     ]).then(([aRes, sRes]) => {
       setAssessment(aRes.data.assessment);
       setSessions(sRes.data.sessions);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => setLoadError("Unable to load this assessment. Check your connection and refresh the page.")).finally(() => setLoading(false));
   }, [id]);
 
   // Poll while any session is live or pending
@@ -158,34 +167,51 @@ export default function AssessmentInvitePage() {
 
   const openInviteDialog = () => {
     setCandidateNameInput("");
+    setInviteError(null);
     setShowInviteDialog(true);
   };
 
   const handleInviteCandidate = async () => {
+    if (creatingSession) return;
     setCreatingSession(true);
-    setShowInviteDialog(false);
+    setInviteError(null);
     setNewSession(null);
     try {
       const res = await assessmentsApi.createSession(Number(id), candidateNameInput.trim() || undefined);
       const created = res.data.session;
       setNewSession(created);
       setSessions((prev) => [created, ...prev]);
+      setShowInviteDialog(false);
+    } catch {
+      setInviteError("We could not create the invitation. Your assessment was not changed. Please retry.");
     } finally {
       setCreatingSession(false);
     }
   };
 
-  const copyLink = (session: Session, id: number) => {
-    navigator.clipboard.writeText(session.invite_url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const copyLink = async (session: Session, id: number) => {
+    try {
+      await navigator.clipboard.writeText(session.invite_url);
+      setCopiedId(id);
+      setCopyError(null);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setCopyError("The link could not be copied automatically. Select the URL below and copy it manually.");
+      setCopyFallbackUrl(session.invite_url);
+    }
   };
 
-  const copyNewSessionLink = () => {
+  const copyNewSessionLink = async () => {
     if (!newSession?.invite_url) return;
-    navigator.clipboard.writeText(newSession.invite_url);
-    setNewSessionCopied(true);
-    setTimeout(() => setNewSessionCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(newSession.invite_url);
+      setNewSessionCopied(true);
+      setCopyError(null);
+      setTimeout(() => setNewSessionCopied(false), 2000);
+    } catch {
+      setCopyError("The link could not be copied automatically. Select the URL below and copy it manually.");
+      setCopyFallbackUrl(newSession.invite_url);
+    }
   };
 
   if (loading) {
@@ -227,7 +253,7 @@ export default function AssessmentInvitePage() {
       </div>
 
       {/* Invite candidate dialog */}
-      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+      <Dialog open={showInviteDialog} onOpenChange={(open) => { if (!creatingSession) setShowInviteDialog(open); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Invite Candidate</DialogTitle>
@@ -243,13 +269,17 @@ export default function AssessmentInvitePage() {
               autoFocus
             />
             <p className="text-xs text-muted-foreground">Optional — helps you identify this session later.</p>
+            {inviteError && <p role="alert" className="text-sm text-destructive">{inviteError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>Cancel</Button>
-            <Button onClick={handleInviteCandidate}>Create Link</Button>
+            <Button variant="outline" onClick={() => setShowInviteDialog(false)} disabled={creatingSession}>Cancel</Button>
+            <Button onClick={handleInviteCandidate} disabled={creatingSession}>{creatingSession ? "Creating..." : "Create Link"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {loadError && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 p-3 text-sm text-destructive"><span>{loadError}</span><Button size="sm" variant="outline" onClick={() => window.location.reload()}>Refresh</Button></div>}
+      {copyError && <div role="alert" className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><p>{copyError}</p>{copyFallbackUrl && <p className="select-all break-all rounded border border-amber-200 bg-white p-2 font-mono text-xs">{copyFallbackUrl}</p>}</div>}
 
       {/* Newly created session invite link */}
       {newSession && (
