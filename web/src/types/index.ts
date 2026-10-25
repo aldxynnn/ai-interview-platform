@@ -144,6 +144,8 @@ export interface FitGapReport {
   culture_narrative: string;
   overall_narrative: string;
   generated_at: string;
+  generation_status?: "pending" | "generating" | "complete" | "failed";
+  generation_error?: string | null;
 }
 
 export interface SkillTaxonomy {
