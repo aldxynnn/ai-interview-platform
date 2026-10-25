@@ -38,7 +38,7 @@ describe("PortfolioPage recovery", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Provider unavailable");
-    expect(screen.getAllByText(/Portfolio generation failed/i)).toHaveLength(0);
+    expect(screen.queryByText(/Portfolio generation failed/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /coba lagi/i }));
     await waitFor(() => expect(sessionsApi.regeneratePortfolio).toHaveBeenCalledWith(2));
     expect(await screen.findByText(/Generating portfolio/i)).toBeInTheDocument();
