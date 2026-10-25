@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require "spec_helper"
+require_relative "../../../app/services/portfolios/generator"
 
 RSpec.describe Portfolios::Generator do
   subject(:generator) { described_class.new(session: Object.new, gemini_client: Object.new) }
