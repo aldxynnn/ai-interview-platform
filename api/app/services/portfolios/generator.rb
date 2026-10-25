@@ -147,35 +147,121 @@ module Portfolios
       }
     end
 
+    class InvalidResponse < StandardError; end
+
     def save_skills(portfolio, response)
-      data = response.is_a?(Hash) ? response : JSON.parse(response)
+      data = normalize_response(response)
+      configured = data.fetch(:configured_skills)
+      discovered = data.fetch(:discovered_skills)
 
-      # Destroy existing skills (idempotent regeneration)
-      portfolio.portfolio_skills.destroy_all
+      overrides = portfolio.portfolio_skills.includes(:assessor_override).filter_map do |skill|
+        override = skill.assessor_override
+        next unless override
 
-      (data['configured_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           skill_data['skill_id'],
-          skill_label:        skill_data['skill_label'],
-          is_discovered:      false,
-          ai_level:           skill_data['level'].to_i.clamp(1, 5),
-          ai_confidence:      skill_data['confidence'],
-          evidence:           Array(skill_data['evidence']).first(3),
-          competency_summary: skill_data['competency_summary']
-        )
+        key = skill_identity(skill_id: skill.skill_id, skill_label: skill.skill_label, discovered: skill.is_discovered)
+        [key, {
+          override_level: override.override_level,
+          assessor_notes: override.assessor_notes,
+          overridden_by: override.overridden_by,
+          overridden_at: override.overridden_at
+        }]
+      end.to_h
+
+      output_keys = configured.map { |skill| skill_identity(skill_id: skill[:skill_id], skill_label: skill[:skill_label], discovered: false) } +
+                    discovered.map { |skill| skill_identity(skill_id: nil, skill_label: skill[:skill_label], discovered: true) }
+      raise InvalidResponse, "Generated portfolio contains duplicate skills" unless output_keys.uniq.length == output_keys.length
+
+      missing_overrides = overrides.keys - output_keys
+      if missing_overrides.any?
+        raise InvalidResponse, "Generated portfolio omitted a skill with an assessor override"
       end
 
-      (data['discovered_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           nil,
-          skill_label:        skill_data['skill_label'],
-          is_discovered:      true,
-          ai_level:           skill_data['level'].to_i.clamp(1, 5),
-          ai_confidence:      skill_data['confidence'],
-          evidence:           Array(skill_data['evidence']).first(3),
-          competency_summary: skill_data['competency_summary']
-        )
+      coverage_maps = @session.coverage_maps.order(:id).to_a
+      expected_configured = coverage_maps.reject(&:is_discovered).map do |map|
+        skill_identity(skill_id: map.skill_id, skill_label: map.skill_label, discovered: false)
       end
+      expected_discovered = coverage_maps.select(&:is_discovered).map do |map|
+        skill_identity(skill_id: nil, skill_label: map.skill_label, discovered: true)
+      end
+
+      unless configured.map { |skill| skill_identity(skill_id: skill[:skill_id], skill_label: skill[:skill_label], discovered: false) }.sort == expected_configured.sort &&
+             discovered.map { |skill| skill_identity(skill_id: nil, skill_label: skill[:skill_label], discovered: true) }.sort == expected_discovered.sort
+        raise InvalidResponse, "Generated portfolio does not match the session coverage map"
+      end
+
+      PortfolioSkill.transaction do
+        # If any insert or override recreation fails, rollback restores the old portfolio.
+        portfolio.portfolio_skills.destroy_all
+        configured.each { |skill| persist_skill!(portfolio, skill, discovered: false, overrides: overrides) }
+        discovered.each { |skill| persist_skill!(portfolio, skill, discovered: true, overrides: overrides) }
+      end
+    rescue JSON::ParserError
+      raise InvalidResponse, "Generated portfolio was not valid JSON"
+    end
+
+    def normalize_response(response)
+      parsed = response.is_a?(Hash) ? response : JSON.parse(response.to_s)
+      raise InvalidResponse, "Generated portfolio must be a JSON object" unless parsed.is_a?(Hash)
+
+      data = parsed.with_indifferent_access
+      unless data[:configured_skills].is_a?(Array) && data[:discovered_skills].is_a?(Array)
+        raise InvalidResponse, "Generated portfolio must contain configured_skills and discovered_skills arrays"
+      end
+
+      {
+        configured_skills: data[:configured_skills].map { |item| normalize_skill(item, discovered: false) },
+        discovered_skills: data[:discovered_skills].map { |item| normalize_skill(item, discovered: true) }
+      }
+    end
+
+    def normalize_skill(item, discovered:)
+      raise InvalidResponse, "Generated skill must be a JSON object" unless item.is_a?(Hash)
+
+      skill = item.with_indifferent_access
+      label = skill[:skill_label].to_s.strip
+      level = skill[:level].to_s
+      confidence = skill[:confidence].to_s.downcase
+      evidence = skill[:evidence]
+      summary = skill[:competency_summary].to_s.strip
+
+      raise InvalidResponse, "Generated skill needs a label and level from 1 to 5" unless label.present? && level.match?(/\\A[1-5]\\z/)
+      raise InvalidResponse, "Generated skill has an invalid confidence level" unless PortfolioSkill::CONFIDENCE_LEVELS.include?(confidence)
+      raise InvalidResponse, "Generated skill evidence must be an array of strings" unless evidence.is_a?(Array) && evidence.all? { |quote| quote.is_a?(String) }
+      raise InvalidResponse, "Generated skill needs a competency summary" if summary.blank?
+
+      {
+        skill_id: discovered ? nil : skill[:skill_id].presence,
+        skill_label: label,
+        level: level.to_i,
+        confidence: confidence,
+        evidence: evidence.map(&:strip).reject(&:blank?).first(3),
+        competency_summary: summary
+      }
+    end
+
+    def skill_identity(skill_id:, skill_label:, discovered:)
+      normalized_label = skill_label.to_s.strip.downcase.gsub(/\\s+/, " ")
+      return "discovered:#{normalized_label}" if discovered
+
+      skill_id.present? ? "configured:id:#{skill_id.to_s.strip}" : "configured:label:#{normalized_label}"
+    end
+
+    def persist_skill!(portfolio, skill_data, discovered:, overrides:)
+      skill = portfolio.portfolio_skills.create!(
+        skill_id: skill_data[:skill_id],
+        skill_label: skill_data[:skill_label],
+        is_discovered: discovered,
+        ai_level: skill_data[:level],
+        ai_confidence: skill_data[:confidence],
+        evidence: skill_data[:evidence],
+        competency_summary: skill_data[:competency_summary]
+      )
+
+      key = skill_identity(skill_id: skill.skill_id, skill_label: skill.skill_label, discovered: discovered)
+      override_attributes = overrides.delete(key)
+      return unless override_attributes
+
+      skill.create_assessor_override!(override_attributes.merge(ai_level: skill.ai_level))
     end
   end
 end
