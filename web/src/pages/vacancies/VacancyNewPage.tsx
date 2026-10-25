@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
+import VacancyPdfImportCard from "@/components/vacancies/VacancyPdfImportCard";
 import { vacanciesApi } from "@/services/vacancies";
 import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import type { VacancySkill } from "@/types";
@@ -58,6 +59,11 @@ export default function VacancyNewPage() {
         <span className="text-sm text-muted-foreground">Vacancies</span>
         <span className="text-sm text-muted-foreground">/</span>
         <span className="text-sm font-medium">New Vacancy</span>
+      </div>
+
+      <div className="space-y-4">
+        <VacancyPdfImportCard onImported={(vacancy) => navigate(`/vacancies/${vacancy.id}/edit`)} />
+        <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" /><span>atau isi manual</span><span className="h-px flex-1 bg-border" /></div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import ComparisonTable from "@/components/fitgap/ComparisonTable";
+import VacancyPdfImportCard from "@/components/vacancies/VacancyPdfImportCard";
+import { useNavigate } from "react-router-dom";
 import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
@@ -12,6 +14,7 @@ import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
 import type { FitGapReport, Portfolio } from "@/types";
 
 export default function FitGapReportPage() {
+  const navigate = useNavigate();
   const { id, sessionId, vacancyId } = useParams<{
     id: string;
     sessionId: string;
@@ -153,6 +156,8 @@ export default function FitGapReportPage() {
           </div>
         )}
       </div>
+
+      <VacancyPdfImportCard compact onImported={(vacancy) => navigate(`/assessments/${id}/sessions/${sessionId}/fitgap/${vacancy.id}`)} />
 
       {pageError && (
         <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">

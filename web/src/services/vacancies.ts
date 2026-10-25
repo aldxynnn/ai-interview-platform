@@ -9,6 +9,15 @@ export interface VacancyPayload {
 }
 
 export const vacanciesApi = {
+  importPdf: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post<{ vacancy: Vacancy }>("/vacancies/import_pdf", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 120_000,
+    });
+  },
+
   list: (page = 1) =>
     api.get<{ vacancies: Vacancy[]; meta: PaginationMeta }>("/vacancies", {
       params: { page },
