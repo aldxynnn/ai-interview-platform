@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require "faraday/retry"
+
 module Gemini
   class HttpClient
     BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
     LEGACY_MODEL_ALIASES = {
       'gemini-2.0-pro-001' => 'gemini-3.8-flash',
-      'gemini-2.0-flash-001' => 'gemini-3.8-flash'
+      'gemini-2.0-pro' => 'gemini-3.8-flash',
+      'gemini-2.0-flash-001' => 'gemini-3.8-flash',
+      'gemini-2.0-flash' => 'gemini-3.8-flash'
     }.freeze
 
     class ApiError < StandardError
