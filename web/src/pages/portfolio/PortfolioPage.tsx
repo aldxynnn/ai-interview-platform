@@ -23,21 +23,28 @@ export default function PortfolioPage() {
   const [selectedVacancy, setSelectedVacancy] = useState<string>("");
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
   const [candidateName, setCandidateName] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   const fetchPortfolio = useCallback(async () => {
-    const res = await sessionsApi.getPortfolio(Number(sessionId));
-    const data = res.data as any;
-    if (data.status === "generating" || data.portfolio?.generation_status === "generating" || data.portfolio?.generation_status === "pending") {
-      setGenerating(true);
-    } else if (data.portfolio) {
-      setPortfolio(data.portfolio);
+    try {
+      const res = await sessionsApi.getPortfolio(Number(sessionId));
+      const data = res.data as any;
+      if (data.status === "generating" || data.portfolio?.generation_status === "generating" || data.portfolio?.generation_status === "pending") {
+        setGenerating(true);
+        setPageError(null);
+      } else if (data.portfolio) {
+        setPortfolio(data.portfolio);
+        setGenerating(false);
+        setPageError(data.portfolio.generation_status === "failed" ? (data.error || "Portfolio generation failed. You can retry.") : null);
+        const overrideMap: Record<number, AssessorOverride> = {};
+        (data.portfolio.overrides ?? []).forEach((o: AssessorOverride) => {
+          overrideMap[o.portfolio_skill_id] = o;
+        });
+        setOverrides(overrideMap);
+      }
+    } catch {
       setGenerating(false);
-      // Build overrides map
-      const overrideMap: Record<number, AssessorOverride> = {};
-      data.portfolio.overrides.forEach((o: AssessorOverride) => {
-        overrideMap[o.portfolio_skill_id] = o;
-      });
-      setOverrides(overrideMap);
+      setPageError("Could not load the portfolio. Check your connection and retry.");
     }
   }, [sessionId]);
 
@@ -47,7 +54,7 @@ export default function PortfolioPage() {
         setVacancies(vRes.data.vacancies);
         setCandidateName(sRes.data.session.candidate_name ?? null);
       })
-      .catch(() => {})
+      .catch(() => setPageError("Some portfolio details could not be loaded. Retry to refresh the page data."))
       .finally(() => setLoading(false));
   }, [fetchPortfolio, sessionId]);
 
@@ -66,6 +73,7 @@ export default function PortfolioPage() {
   const handleExport = async (format: "pdf" | "json") => {
     if (!portfolio) return;
     setExporting(format);
+    setPageError(null);
     try {
       const res = await portfoliosApi.exportPortfolio(
         portfolio.id,
@@ -89,6 +97,8 @@ export default function PortfolioPage() {
         a.click();
         URL.revokeObjectURL(url);
       }
+    } catch {
+      setPageError("Export failed. Please retry.");
     } finally {
       setExporting(null);
     }
@@ -152,6 +162,13 @@ export default function PortfolioPage() {
           )}
         </div>
       </div>
+
+      {pageError && (
+        <div role="alert" className="rounded-lg border border-destructive/40 p-4 space-y-2">
+          <p className="text-sm text-destructive">{pageError}</p>
+          <Button variant="outline" size="sm" onClick={() => { setPageError(null); void fetchPortfolio(); }}>Retry</Button>
+        </div>
+      )}
 
       {/* Generating state */}
       {generating && (
