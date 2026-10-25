@@ -60,6 +60,7 @@ export default function FitGapReportPage() {
           setPortfolio(data.portfolio);
         }
       })
+      .catch(() => setPageError("Could not load the portfolio context. Check your connection and retry."))
       .finally(() => setLoading(false));
   }, [sessionId]);
 
@@ -74,7 +75,7 @@ export default function FitGapReportPage() {
     setRegenerating(true);
     try {
       await portfoliosApi.regenerateFitGap(portfolio.id, Number(vacancyId));
-      setReport(null);
+      setPageError(null);
       setGenerating(true);
     } catch {
       setPageError("Regeneration could not be started. Your previous report is still available.");
@@ -156,7 +157,7 @@ export default function FitGapReportPage() {
       {pageError && (
         <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
           <p className="text-sm text-destructive">{pageError}</p>
-          <Button variant="outline" size="sm" onClick={() => { setPageError(null); void fetchReport(); }} disabled={regenerating}>Retry</Button>
+          <Button variant="outline" size="sm" onClick={() => { if (report) void handleRegenerate(); else { setPageError(null); void fetchReport(); } }} disabled={regenerating}>Retry</Button>
         </div>
       )}
 
