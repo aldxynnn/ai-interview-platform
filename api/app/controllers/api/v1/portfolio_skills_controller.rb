@@ -42,14 +42,26 @@ module Api
         portfolio = @portfolio_skill.portfolio
         FitGapReport.where(portfolio_id: portfolio.id).each do |report|
           vacancy_id = report.vacancy_id
+          lock_key   = "fitgap_generating:#{portfolio.id}:#{vacancy_id}"
+          lock_token = SecureRandom.uuid
+          Rails.cache.write(lock_key, lock_token, expires_in: 10.minutes)
           report.destroy
-          FitGapGeneratorWorker.perform_async(portfolio.id, vacancy_id)
+          begin
+            FitGapGeneratorWorker.perform_async(portfolio.id, vacancy_id, lock_token)
+          rescue => e
+            Rails.cache.delete(lock_key)
+            raise
+          end
         end
       end
 
       def set_portfolio_skill
-        @portfolio_skill = PortfolioSkill.joins(:portfolio)
+        @portfolio_skill = PortfolioSkill.joins(portfolio: :session)
                                          .find(params[:id])
+
+        unless @portfolio_skill.portfolio.session.tenant_id == current_tenant_id
+          raise ExceptionHandler::TenantNotFound, "Portfolio skill not found"
+        end
       rescue ActiveRecord::RecordNotFound
         json_error("Portfolio skill not found", :not_found)
       end

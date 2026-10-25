@@ -16,7 +16,7 @@ export interface Assessment {
 
 export interface AssessmentSkill {
   id?: number;
-  skill_id?: number;
+  skill_id?: string | number;
   skill_label: string;
   is_custom: boolean;
   expected_level: number;
@@ -49,7 +49,7 @@ export interface Session {
 
 export interface CoverageSkill {
   id: number;
-  skill_id: number;
+  skill_id: string | number;
   skill_label: string;
   is_discovered: boolean;
   state: "not_yet" | "initiated" | "partial" | "covered";
@@ -87,11 +87,11 @@ export interface Portfolio {
 
 export interface PortfolioSkill {
   id: number;
-  skill_id?: number;
+  skill_id?: string | number;
   skill_label: string;
   is_discovered: boolean;
-  ai_level: string;       // "L1" | "L2" | "L3" | "L4" | "L5"
-  ai_confidence: string;  // "high" | "medium" | "low"
+  ai_level: number | string;
+  ai_confidence: "high" | "medium" | "low" | string;
   evidence: string[];
   competency_summary: string;
 }
@@ -119,7 +119,7 @@ export interface Vacancy {
 
 export interface VacancySkill {
   id?: number;
-  skill_id?: number;
+  skill_id?: string | number;
   skill_label: string;
   expected_level: number;
   _destroy?: boolean;
@@ -129,10 +129,13 @@ export type SkillComparisonResult = "match" | "gap" | "exceed" | "not_assessed";
 
 export interface SkillComparison {
   skill_label: string;
-  required_level: number;
+  skill_id?: string | number;
+  expected_level?: number;
+  required_level?: number;
   candidate_level?: number;
   result: SkillComparisonResult;
   delta?: number;
+  confidence?: "high" | "medium" | "low" | string;
   is_override?: boolean;
 }
 
@@ -140,6 +143,7 @@ export interface FitGapReport {
   id: number;
   portfolio_id: number;
   vacancy_id: number;
+  status?: "pending" | "generating" | "complete" | "failed";
   skill_comparisons: SkillComparison[];
   culture_narrative: string;
   overall_narrative: string;

@@ -48,11 +48,13 @@ module FitGap
           expected_level   = vacancy_skill.expected_level
           delta            = candidate_level - expected_level
           result           = delta == 0 ? 'match' : (delta > 0 ? 'exceed' : 'gap')
+          is_override      = portfolio_skill[:overridden] == true
         else
           candidate_level = nil
           expected_level  = vacancy_skill.expected_level
           delta           = nil
           result          = 'not_assessed'
+          is_override     = false
         end
 
         {
@@ -60,9 +62,11 @@ module FitGap
           skill_id:        vacancy_skill.skill_id,
           candidate_level: candidate_level,
           expected_level:  expected_level,
+          required_level:  expected_level,
           result:          result,
           delta:           delta,
-          confidence:      portfolio_skill&.dig(:confidence)
+          confidence:      portfolio_skill&.dig(:confidence),
+          is_override:     is_override
         }
       end
 

@@ -150,31 +150,56 @@ module Portfolios
     def save_skills(portfolio, response)
       data = response.is_a?(Hash) ? response : JSON.parse(response)
 
-      # Destroy existing skills (idempotent regeneration)
-      portfolio.portfolio_skills.destroy_all
+      # Build flat list: [[is_discovered, skill_data], ...]
+      all_incoming = (data['configured_skills'] || []).map { |s| [false, s] } +
+                     (data['discovered_skills'] || []).map { |s| [true, s] }
 
-      (data['configured_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           skill_data['skill_id'],
-          skill_label:        skill_data['skill_label'],
-          is_discovered:      false,
-          ai_level:           skill_data['level'].to_i.clamp(1, 5),
-          ai_confidence:      skill_data['confidence'],
-          evidence:           Array(skill_data['evidence']).first(3),
-          competency_summary: skill_data['competency_summary']
-        )
+      # Pre-load existing skills to avoid N+1 queries when matching
+      existing_skills = portfolio.portfolio_skills.to_a
+
+      # Remove skills no longer present in the AI response (rare edge case).
+      # Matching: by skill_id if present, otherwise by normalised label.
+      # IMPORTANT: NEVER destroy a skill if an assessor override is attached to it!
+      # An AI omission or hallucination during regeneration must never destroy human calibration.
+      incoming_keys = all_incoming.map do |_, s|
+        [s['skill_id'].presence, s['skill_label'].downcase.strip]
       end
 
-      (data['discovered_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           nil,
+      existing_skills.each do |skill|
+        matched = incoming_keys.any? do |id, label|
+          (id.present? && id == skill.skill_id) ||
+            skill.skill_label.downcase.strip == label
+        end
+        skill.destroy unless matched || skill.assessor_override.present?
+      end
+
+      # Upsert each incoming skill, preserving assessor_override via the same record id.
+      all_incoming.each do |is_discovered, skill_data|
+        sid   = skill_data['skill_id'].presence
+        label = skill_data['skill_label'].downcase.strip
+
+        existing = existing_skills.find do |s|
+          (sid.present? && s.skill_id == sid) ||
+            s.skill_label.downcase.strip == label
+        end
+
+        attrs = {
+          skill_id:           sid,
           skill_label:        skill_data['skill_label'],
-          is_discovered:      true,
+          is_discovered:      is_discovered,
           ai_level:           skill_data['level'].to_i.clamp(1, 5),
           ai_confidence:      skill_data['confidence'],
           evidence:           Array(skill_data['evidence']).first(3),
           competency_summary: skill_data['competency_summary']
-        )
+        }
+
+        if existing
+          # Update in-place: assessor_override remains linked to the same
+          # portfolio_skill.id and is NOT touched by this update.
+          existing.update!(attrs)
+        else
+          portfolio.portfolio_skills.create!(attrs)
+        end
       end
     end
   end

@@ -47,6 +47,8 @@ module Api
 
       # GET /api/v1/portfolios/:id/export
       def export
+        authorize_portfolio!(@portfolio)
+
         format = params.fetch(:format, "json")
 
         unless %w[pdf json].include?(format)
@@ -80,6 +82,8 @@ module Api
       # POST /api/v1/portfolios/:id/regenerate_fitgap
       def regenerate_fitgap
         portfolio  = Portfolio.find(params[:id])
+        authorize_portfolio!(portfolio)
+
         vacancy_id = params[:vacancy_id]
 
         return json_error("vacancy_id is required", :unprocessable_entity) if vacancy_id.blank?
@@ -91,8 +95,18 @@ module Api
           return json_error("Portfolio is not ready (status: #{portfolio.generation_status})", :unprocessable_entity)
         end
 
+        lock_key   = "fitgap_generating:#{portfolio.id}:#{vacancy.id}"
+        lock_token = SecureRandom.uuid
+        Rails.cache.write(lock_key, lock_token, expires_in: 10.minutes)
+
         FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)&.destroy
-        FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id)
+
+        begin
+          FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id, lock_token)
+        rescue => e
+          Rails.cache.delete(lock_key)
+          raise
+        end
 
         render json: { status: "generating", message: "Fit/gap report regeneration queued" }, status: :accepted
       rescue ActiveRecord::RecordNotFound
@@ -100,8 +114,11 @@ module Api
       end
 
       # POST /api/v1/portfolios/:id/fitgap
+      # Idempotent: returns existing report if ready, or 202 if already generating.
+      # Frontend should call GET show_fitgap to poll; this endpoint only enqueues once.
       def fitgap
         portfolio = Portfolio.find(params[:id])
+        authorize_portfolio!(portfolio)
 
         vacancy_id = params.dig(:fitgap, :vacancy_id) || params[:vacancy_id]
         return json_error("vacancy_id is required", :unprocessable_entity) if vacancy_id.blank?
@@ -113,25 +130,47 @@ module Api
           return json_error("Portfolio is not ready (status: #{portfolio.generation_status})", :unprocessable_entity)
         end
 
-        # Return cached report if it exists and portfolio has no new overrides
+        # Return cached report if it exists
         existing = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)
         if existing
           return json_response(report: fit_gap_json(existing))
         end
 
-        FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id)
-        render json: { status: "generating", message: "Fit/gap report generation queued" }, status: :accepted
+        # Idempotency guard: atomic SETNX to prevent duplicate enqueue during a generation window.
+        # TTL is 10 minutes to cover full Sidekiq retry backoff + execution duration.
+        lock_key   = "fitgap_generating:#{portfolio.id}:#{vacancy.id}"
+        lock_token = SecureRandom.uuid
+        acquired   = Rails.cache.write(lock_key, lock_token, unless_exist: true, expires_in: 10.minutes)
+
+        if acquired
+          begin
+            FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id, lock_token)
+          rescue => e
+            # Enqueue failure cleanup: ensure dead lock is not held for 10 minutes
+            Rails.cache.delete(lock_key)
+            raise
+          end
+        end
+
+        render json: { status: "generating", message: "Fit/gap report generation in progress" }, status: :accepted
       rescue ActiveRecord::RecordNotFound
         json_error("Portfolio not found", :not_found)
       end
 
       # GET /api/v1/portfolios/:id/fitgap/:vacancy_id
+      # Returns report if ready, or { status: "not_started" | "generating" } when not yet available.
+      # Never returns 404 for a missing report — frontend polls this endpoint and must not
+      # re-trigger POST on each poll cycle.
       def show_fitgap
         portfolio = Portfolio.find(params[:id])
-        report    = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: params[:vacancy_id])
+        authorize_portfolio!(portfolio)
+
+        report = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: params[:vacancy_id])
 
         if report.nil?
-          return json_error("Fit/gap report not found", :not_found)
+          lock_key = "fitgap_generating:#{portfolio.id}:#{params[:vacancy_id]}"
+          status   = Rails.cache.read(lock_key) ? "generating" : "not_started"
+          return render json: { status: status }, status: :ok
         end
 
         json_response(report: fit_gap_json(report))
@@ -157,6 +196,16 @@ module Api
         end
       rescue ActiveRecord::RecordNotFound
         json_error("Portfolio not found", :not_found)
+      end
+
+      # Tenant isolation guard for direct portfolio lookups.
+      # Portfolios are scoped to sessions; Session has tenant_id directly via TenantScoped.
+      # Without this, any assessor token from a different tenant could read/write
+      # another tenant's portfolio data (IDOR).
+      def authorize_portfolio!(portfolio)
+        return if portfolio.session.tenant_id == current_tenant_id
+
+        raise ExceptionHandler::TenantNotFound, "Portfolio not found"
       end
 
       def portfolio_json(portfolio)
