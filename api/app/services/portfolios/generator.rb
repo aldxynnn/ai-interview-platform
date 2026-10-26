@@ -263,7 +263,7 @@ module Portfolios
     end
 
     def normalize_quote(value)
-      value.to_s.downcase.gsub(/\\s+/, " ").strip
+      value.to_s.downcase.gsub(/\s+/, " ").strip
     end
 
     def same_skill?(existing, attributes)
