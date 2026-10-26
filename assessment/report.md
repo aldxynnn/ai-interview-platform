@@ -44,7 +44,7 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 
 CI historis pada commit `1d285f951ce12857a8f9b86a07381d78cacc8f5b` dilaporkan lulus: 16 RSpec examples / 0 failures, Vitest, production build, serta migration rollback dan re-apply pada PostgreSQL disposable.
 
-**Batas klaim:** regression spec vacancy lintas tenant ditambahkan setelah commit CI tersebut, sehingga statusnya belum dapat dikonfirmasi. Browser E2E/responsive, screenshot aktual, Gemini live/timeout, dan setup dari clone bersih belum dilakukan atau belum terverifikasi.
+**Verifikasi terbaru:** setelah regression spec menemukan `AbstractController::DoubleRenderError`, helper `find_vacancy!` diperbaiki agar mengembalikan `nil` setelah merender error sehingga controller berhenti dengan benar. CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61` lulus: job API RSpec dan job Web (Vitest + production build) sukses; migration rollback dan re-apply juga sukses dalam job API. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346. Browser E2E/responsive, screenshot aktual, Gemini live/timeout, dan setup dari clone bersih tetap belum dilakukan atau belum terverifikasi.
 
 ## 6. AI Verification Moment
 
@@ -59,7 +59,7 @@ Scratch branch: `scratch/seeded-fault-fitgap-20261026`.
 - Fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/91f2405bd96395bc508bb99e7ea6541e0b0d3305
 - Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/74317ce7cd093da7825b2cb9d43f8917e26e1377
 
-Fault sengaja membuat lookup vacancy kembali tidak tenant-scoped; recovery memulihkan scope. Hasil Actions untuk fault commit belum dapat diambil, sehingga belum boleh diklaim bahwa test telah terlihat gagal.
+Percobaan awal di branch lama tidak terisolasi dengan benar karena test gagal akibat `DoubleRenderError` baik saat fault maupun recovery; hasil itu bukan bukti valid bahwa tenant fault yang memicu kegagalan. Percobaan terisolasi baru berjalan pada `scratch/seeded-fault-isolated-20261026`, dibuat dari commit yang telah memperbaiki error response. Fault commit `c5268e6f2a5384624db07bf4bbc822307174c06c`; recovery commit `0398928da567264baed414bda2f3723feab8a48f`. CI kedua commit masih berjalan saat laporan ini diperbarui; hasil akhir harus diperiksa sebelum mengklaim fault fail / recovery pass.
 
 ## 8. Privasi, UU PDP, dan risiko tersisa
 
@@ -69,7 +69,7 @@ Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/
 
 - Branch: https://github.com/aldxynnn/ai-interview-platform/tree/take-home/trustworthy-fitgap-20261026
 - CI historis: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40256979092
-- PR: belum dibuat karena instruksi percakapan melarang pembuatan PR tanpa persetujuan eksplisit.
+- PR: belum dibuat. Branch implementasi siap untuk review; buat PR ke upstream setelah memastikan hasil CI terbaru dan isi deskripsi dengan batasan verifikasi.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
 - Local setup: ikuti `api/README.md` dan `web/README.md`; belum diverifikasi dari clone bersih.
