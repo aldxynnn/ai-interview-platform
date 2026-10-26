@@ -4,7 +4,7 @@ Tanggal: 26 Oktober 2026
 Branch kerja utama untuk PR: `take-home/trustworthy-fitgap-20261026`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
-> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI branch PR-ready lulus pada run 40264619423: 22 RSpec examples / 0 failures, Web Vitest + production build pass, migration rollback/re-apply pass. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
+> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI snapshot implementasi dengan privacy hardening lulus pada run 40264619423: 22 RSpec examples / 0 failures, Web Vitest + production build pass, migration rollback/re-apply pass. CI pada branch kerja utama setelah integrasi masih perlu diverifikasi. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
 
 ## 1. Produk dan pengguna
 
@@ -74,7 +74,7 @@ Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat r
 ## 9. Submission dan tindak lanjut
 
 - Branch final (berbasis upstream base, dengan implementation snapshot dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/take-home/trustworthy-fitgap-20261026
-- CI source branch untuk code snapshot lulus (22 RSpec examples, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296
+- CI snapshot kode privacy-hardening lulus (22 RSpec examples, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264619423. CI terbaru branch kerja utama perlu diperiksa terpisah setelah commit integrasi
 - PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch final yang disiapkan untuk PR: `take-home/trustworthy-fitgap-20261026`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
