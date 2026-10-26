@@ -59,9 +59,23 @@ module Api
 
         @vacancy.fit_gap_reports.includes(:portfolio).find_each do |report|
           scheduled = FitGap::ReportScheduler.enqueue(portfolio: report.portfolio, vacancy: @vacancy)
-          refresh_failed ||= scheduled.nil? || scheduled.failed?
+          if scheduled.nil?
+            report.update_columns(
+              generation_status: "failed",
+              generation_error: "Report refresh could not be scheduled",
+              generation_started_at: nil
+            )
+            refresh_failed = true
+          else
+            refresh_failed ||= scheduled.failed?
+          end
         rescue StandardError => e
           refresh_failed = true
+          report.update_columns(
+            generation_status: "failed",
+            generation_error: "Report refresh could not be scheduled",
+            generation_started_at: nil
+          )
           Rails.logger.error("[Vacancies] Fit/gap refresh failed: #{e.class}")
         end
 
