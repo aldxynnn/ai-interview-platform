@@ -9,7 +9,7 @@ import { sessionsApi } from "@/services/sessions";
 import { vacanciesApi } from "@/services/vacancies";
 import { portfoliosApi } from "@/services/portfolios";
 import { usePolling } from "@/hooks/usePolling";
-import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText } from "lucide-react";
+import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText, AlertCircle } from "lucide-react";
 import type { Portfolio, AssessorOverride, Vacancy } from "@/types";
 
 export default function PortfolioPage() {
@@ -18,6 +18,8 @@ export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [exportError, setExportError] = useState(false);
   const [overrides, setOverrides] = useState<Record<number, AssessorOverride>>({});
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [selectedVacancy, setSelectedVacancy] = useState<string>("");
@@ -41,15 +43,28 @@ export default function PortfolioPage() {
     }
   }, [sessionId]);
 
-  useEffect(() => {
-    Promise.all([fetchPortfolio(), vacanciesApi.list(), sessionsApi.get(Number(sessionId))])
-      .then(([, vRes, sRes]) => {
-        setVacancies(vRes.data.vacancies);
-        setCandidateName(sRes.data.session.candidate_name ?? null);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const loadPage = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [, vRes, sRes] = await Promise.all([
+        fetchPortfolio(),
+        vacanciesApi.list(),
+        sessionsApi.get(Number(sessionId)),
+      ]);
+      setVacancies(vRes.data.vacancies);
+      setCandidateName(sRes.data.session.candidate_name ?? null);
+    } catch {
+      // Keep the failure visible; an empty catch makes a failed request look like missing data.
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [fetchPortfolio, sessionId]);
+
+  useEffect(() => {
+    void loadPage();
+  }, [loadPage]);
 
   // Poll while generating
   usePolling(fetchPortfolio, 5000, generating);
@@ -66,6 +81,7 @@ export default function PortfolioPage() {
   const handleExport = async (format: "pdf" | "json") => {
     if (!portfolio) return;
     setExporting(format);
+    setExportError(false);
     try {
       const res = await portfoliosApi.exportPortfolio(
         portfolio.id,
@@ -89,6 +105,9 @@ export default function PortfolioPage() {
         a.click();
         URL.revokeObjectURL(url);
       }
+    } catch {
+      // Do not expose raw API errors or candidate data in the UI.
+      setExportError(true);
     } finally {
       setExporting(null);
     }
@@ -100,6 +119,36 @@ export default function PortfolioPage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-12">
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3"
+        >
+          <AlertCircle className="h-8 w-8 text-destructive mx-auto" aria-hidden="true" />
+          <h1 className="text-lg font-semibold">We couldn’t load portfolio results</h1>
+          <p className="text-sm text-muted-foreground">
+            Your results may still be available. Check your connection and try again.
+          </p>
+          <div className="flex flex-col-reverse sm:flex-row justify-center gap-2 pt-1">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Go back
+            </Button>
+            <Button onClick={() => void loadPage()} disabled={loading}>
+              {loading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
+              )}
+              Try again
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -133,7 +182,7 @@ export default function PortfolioPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleExport("pdf")}
+                onClick={() => void handleExport("pdf")}
                 disabled={!!exporting}
               >
                 {exporting === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
@@ -142,7 +191,7 @@ export default function PortfolioPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleExport("json")}
+                onClick={() => void handleExport("json")}
                 disabled={!!exporting}
               >
                 {exporting === "json" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
@@ -152,6 +201,21 @@ export default function PortfolioPage() {
           )}
         </div>
       </div>
+
+      {exportError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+          <div>
+            <p className="font-medium">Export failed</p>
+            <p className="text-muted-foreground">
+              The file could not be generated. Check your connection and try again.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Generating state */}
       {generating && (
@@ -189,16 +253,22 @@ export default function PortfolioPage() {
           {/* Configured skills */}
           <div className="space-y-3">
             <h2 className="text-sm font-semibold">Configured Skills</h2>
-            {portfolio.skills
-              .filter((s) => !s.is_discovered)
-              .map((skill) => (
-                <SkillPortfolioCard
-                  key={skill.id}
-                  skill={skill}
-                  override={overrides[skill.id]}
-                  onOverrideSaved={(o) => handleOverrideSaved(skill.id, o)}
-                />
-              ))}
+            {portfolio.skills.filter((s) => !s.is_discovered).length === 0 ? (
+              <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                No configured skills were assessed for this session.
+              </p>
+            ) : (
+              portfolio.skills
+                .filter((s) => !s.is_discovered)
+                .map((skill) => (
+                  <SkillPortfolioCard
+                    key={skill.id}
+                    skill={skill}
+                    override={overrides[skill.id]}
+                    onOverrideSaved={(o) => handleOverrideSaved(skill.id, o)}
+                  />
+                ))
+            )}
           </div>
 
           {/* Discovered skills */}
@@ -232,23 +302,32 @@ export default function PortfolioPage() {
           <Separator />
 
           {/* Fit/Gap */}
-          <div className="flex items-center gap-3">
-            <Select value={selectedVacancy} onValueChange={setSelectedVacancy}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Choose vacancy..." />
-              </SelectTrigger>
-              <SelectContent>
-                {vacancies.map((v) => (
-                  <SelectItem key={v.id} value={String(v.id)}>
-                    {v.role_title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleRunFitGap} disabled={!selectedVacancy}>
-              Run Fit/Gap Analysis →
-            </Button>
-          </div>
+          {vacancies.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-4 space-y-1">
+              <h2 className="text-sm font-medium">No vacancies available</h2>
+              <p className="text-sm text-muted-foreground">
+                Create a vacancy before running fit/gap analysis. Portfolio results remain available.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <Select value={selectedVacancy} onValueChange={setSelectedVacancy}>
+                <SelectTrigger className="w-full sm:w-56">
+                  <SelectValue placeholder="Choose vacancy..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {vacancies.map((v) => (
+                    <SelectItem key={v.id} value={String(v.id)}>
+                      {v.role_title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleRunFitGap} disabled={!selectedVacancy}>
+                Run Fit/Gap Analysis →
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

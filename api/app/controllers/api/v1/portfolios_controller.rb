@@ -57,8 +57,13 @@ module Api
           return json_error("Portfolio is not ready for export (status: #{@portfolio.generation_status})", :unprocessable_entity)
         end
 
+        vacancy = nil
+        if params[:vacancy_id].present?
+          vacancy = Vacancy.find_by(id: params[:vacancy_id])
+          return json_error("Vacancy not found", :not_found) unless vacancy
+        end
+
         if format == "pdf"
-          vacancy = params[:vacancy_id].present? ? Vacancy.find_by(id: params[:vacancy_id]) : nil
           pdf_data = Exports::PdfGenerator.new(portfolio: @portfolio, vacancy: vacancy).call
 
           return send_data pdf_data,
@@ -68,8 +73,7 @@ module Api
         end
 
         # JSON export
-        vacancy_id = params[:vacancy_id]
-        export_data = build_export_json(@portfolio, vacancy_id)
+        export_data = build_export_json(@portfolio, vacancy&.id)
 
         send_data export_data.to_json,
                   filename:    "portfolio-#{@portfolio.id}.json",
