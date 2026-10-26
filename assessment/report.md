@@ -4,7 +4,7 @@ Tanggal: 26 Oktober 2026
 Branch final untuk PR: `take-home/fitgap-reliability-final`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
-> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI pada branch final lulus; verifikasi branch terbaru termasuk run 40263841424. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
+> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI pada branch final lulus, termasuk privacy regression test, pada run 40264168296. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
 
 ## 1. Produk dan pengguna
 
@@ -36,13 +36,14 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 - Kontrak Fit/Gap diselaraskan; `not_assessed` dibedakan dari gap.
 - Report scheduler/worker menggunakan status, fingerprint, lease token, dan guard idempotensi.
 - Portfolio generator memvalidasi respons dan menggunakan transaksi sambil menjaga override assessor.
+- Error provider saat generation disimpan dan dilog sebagai pesan generik; detail response provider tidak ditulis ke log atau status error.
 - Interview page menampilkan error invitation dan retry, bukan completion palsu.
 - Vitest/component test, RSpec request/service specs, CI workflow, perbaikan README port/path.
 - Tambahan regression spec untuk mencegah tenant A menjadwalkan Fit/Gap dengan vacancy tenant B.
 
 ## 5. Hasil pengujian
 
-CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch HEAD implementasi terbaru lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286.
+CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 20 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch HEAD implementasi terbaru lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286.
 
 Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
 
@@ -72,7 +73,7 @@ Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat r
 ## 9. Submission dan tindak lanjut
 
 - Branch final (berbasis upstream base, dengan implementation snapshot dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/take-home/fitgap-reliability-final
-- CI final branch lulus (API RSpec, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40263841424
+- CI final branch lulus (20 RSpec examples, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296
 - PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch final yang disiapkan untuk PR: `take-home/fitgap-reliability-final`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
