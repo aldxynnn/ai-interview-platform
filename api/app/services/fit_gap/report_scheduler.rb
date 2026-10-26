@@ -2,6 +2,7 @@
 
 require "digest"
 require "json"
+require "time"
 
 module FitGap
   # Serializes report generation requests around the unique (portfolio, vacancy)
@@ -82,7 +83,7 @@ module FitGap
           skill_label: skill.skill_label.to_s.strip.downcase,
           ai_level: skill.ai_level,
           confidence: skill.ai_confidence,
-          has_evidence: skill.evidence_quotes.any?,
+          evidence_digest: Digest::SHA256.hexdigest(JSON.generate(skill.evidence_quotes)),
           override_level: override&.override_level
         }
       end
