@@ -56,6 +56,19 @@ RSpec.describe Portfolios::Generator do
     expect(override.assessor_notes).to eq("Human review")
   end
 
+  it "does not persist provider exception details when generation fails" do
+    session, portfolio, = create_portfolio_fixture
+    client = double("Gemini client")
+    allow(client).to receive(:generate_content).and_raise(StandardError, "private provider response payload")
+    generator = described_class.new(session: session, gemini_client: client)
+
+    expect(Rails.logger).to receive(:error).with("[N10] Portfolio generation failed for session #{session.id}: StandardError")
+
+    expect { generator.call }.to raise_error(StandardError, "private provider response payload")
+    expect(portfolio.reload.generation_status).to eq("failed")
+    expect(portfolio.generation_error).to eq("Portfolio generation failed. Please retry.")
+  end
+
   it "rejects malformed model output before replacing existing skills" do
     session, portfolio, skill, = create_portfolio_fixture
     generator = described_class.new(session: session, gemini_client: double("Gemini client"))

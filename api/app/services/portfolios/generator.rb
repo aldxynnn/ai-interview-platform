@@ -30,9 +30,14 @@ module Portfolios
 
       Rails.logger.info("[N10] Portfolio generated for session #{@session.id}")
       portfolio
-    rescue => e
-      portfolio&.update!(generation_status: 'failed', generation_error: e.message)
-      Rails.logger.error("[N10] Portfolio generation failed for session #{@session.id}: #{e.class} #{e.message}")
+    rescue StandardError => e
+      # Provider errors may contain response bodies or transcript fragments. Keep
+      # persisted state and logs generic; the original exception still reaches Sidekiq.
+      portfolio&.update!(
+        generation_status: 'failed',
+        generation_error: 'Portfolio generation failed. Please retry.'
+      )
+      Rails.logger.error("[N10] Portfolio generation failed for session #{@session.id}: #{e.class}")
       raise
     end
 

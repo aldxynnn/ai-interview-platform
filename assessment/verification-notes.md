@@ -20,6 +20,10 @@ Valid isolated experiment branch: `scratch/seeded-fault-unscoped-20261026`, base
 
 Earlier scratch attempts were not isolated correctly and are not used as evidence.
 
+## Privacy verification update
+
+Portfolio generation and exhausted Sidekiq retries now persist generic failure messages and log only the exception class, because provider error text may contain response bodies or transcript fragments. A regression spec asserts the stored error and log do not include provider message details.
+
 ## CI evidence boundary
 
 Latest verified implementation CI run with same-tenant positive-control and scheduling tests: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781 at commit `5a0b0dd488013d52f7623860a83b703db931bda5`. Result: 19 RSpec examples, 0 failures; Web Vitest and production build passed; migration rollback/re-apply passed. The latest implementation-branch HEAD CI run is green: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286 (API RSpec and Web Vitest/production build jobs both succeeded).
