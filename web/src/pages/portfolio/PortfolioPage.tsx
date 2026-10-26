@@ -9,7 +9,7 @@ import { sessionsApi } from "@/services/sessions";
 import { vacanciesApi } from "@/services/vacancies";
 import { portfoliosApi } from "@/services/portfolios";
 import { usePolling } from "@/hooks/usePolling";
-import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText } from "lucide-react";
+import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText, AlertCircle } from "lucide-react";
 import type { Portfolio, AssessorOverride, Vacancy } from "@/types";
 
 export default function PortfolioPage() {
@@ -18,6 +18,7 @@ export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [overrides, setOverrides] = useState<Record<number, AssessorOverride>>({});
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [selectedVacancy, setSelectedVacancy] = useState<string>("");
@@ -41,15 +42,28 @@ export default function PortfolioPage() {
     }
   }, [sessionId]);
 
-  useEffect(() => {
-    Promise.all([fetchPortfolio(), vacanciesApi.list(), sessionsApi.get(Number(sessionId))])
-      .then(([, vRes, sRes]) => {
-        setVacancies(vRes.data.vacancies);
-        setCandidateName(sRes.data.session.candidate_name ?? null);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const loadPage = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [, vRes, sRes] = await Promise.all([
+        fetchPortfolio(),
+        vacanciesApi.list(),
+        sessionsApi.get(Number(sessionId)),
+      ]);
+      setVacancies(vRes.data.vacancies);
+      setCandidateName(sRes.data.session.candidate_name ?? null);
+    } catch {
+      // Keep the failure visible; an empty catch makes a failed request look like missing data.
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [fetchPortfolio, sessionId]);
+
+  useEffect(() => {
+    void loadPage();
+  }, [loadPage]);
 
   // Poll while generating
   usePolling(fetchPortfolio, 5000, generating);
@@ -100,6 +114,36 @@ export default function PortfolioPage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-12">
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3"
+        >
+          <AlertCircle className="h-8 w-8 text-destructive mx-auto" aria-hidden="true" />
+          <h1 className="text-lg font-semibold">We couldn’t load portfolio results</h1>
+          <p className="text-sm text-muted-foreground">
+            Your results may still be available. Check your connection and try again.
+          </p>
+          <div className="flex flex-col-reverse sm:flex-row justify-center gap-2 pt-1">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Go back
+            </Button>
+            <Button onClick={() => void loadPage()} disabled={loading}>
+              {loading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
+              )}
+              Try again
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
