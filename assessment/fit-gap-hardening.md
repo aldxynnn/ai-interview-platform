@@ -28,7 +28,7 @@ Constraint signal: the repository does not expose a runnable local environment t
 ### Acceptance criteria
 - AI levels `L1`..`L5` and integer overrides map to numeric levels 1..5.
 - Missing/invalid candidate or requirement levels produce `not_assessed`, never a fabricated gap or arithmetic exception.
-- API response uses `expected_level` as stored internally but maps to the frontend contract key `required_level` and preserves null values for unassessed requirements..
+- API response uses `expected_level` as stored internally but maps to the frontend contract key `required_level` and preserves null values for unassessed requirements.
 - Override provenance is returned for the UI.
 - Invalid/empty AI narrative falls back to an evidence-count summary.
 - No automated hire/reject recommendation is produced.
