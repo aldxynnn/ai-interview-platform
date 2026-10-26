@@ -202,7 +202,10 @@ module Api
           id:                report.id,
           portfolio_id:      report.portfolio_id,
           vacancy_id:        report.vacancy_id,
-          skill_comparisons: report.skill_comparisons,
+          skill_comparisons: Array(report.skill_comparisons).map do |comparison|
+            row = comparison.to_h.with_indifferent_access
+            row.except(:expected_level).merge(required_level: row[:expected_level])
+          end,
           culture_narrative: report.culture_narrative,
           overall_narrative: report.overall_narrative,
           generated_at:      report.generated_at
