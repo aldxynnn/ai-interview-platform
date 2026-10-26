@@ -153,7 +153,7 @@ module Api
           return nil
         end
 
-        vacancy = Vacancy.find_by(id: id, tenant_id: current_tenant_id)
+        vacancy = Vacancy.find_by(id: id)
         return vacancy if vacancy
 
         json_error("Vacancy not found", :not_found)
