@@ -74,7 +74,7 @@ export default function FitGapReportPage() {
     setRequesting(true);
     setReportError(null);
     try {
-      const response = await portfoliosApi.triggerFitGap(portfolio.id, Number(vacancyId));
+      const response = await portfoliosApi.triggerFitGap(loadedPortfolio.id, Number(vacancyId));
       setReport(response.data.report);
       setPageError(null);
     } catch (error) {
@@ -86,13 +86,14 @@ export default function FitGapReportPage() {
 
   useEffect(() => {
     if (!portfolioReady || !portfolio) return;
+    const loadedPortfolio = portfolio;
     let cancelled = false;
 
     async function loadOrCreateReport() {
       setRequesting(true);
       setReportError(null);
       try {
-        const response = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
+        const response = await portfoliosApi.getFitGap(loadedPortfolio.id, Number(vacancyId));
         if (!cancelled) setReport(response.data.report);
       } catch (error) {
         const status = (error as { response?: { status?: number } })?.response?.status;
@@ -117,8 +118,9 @@ export default function FitGapReportPage() {
 
   const pollReport = useCallback(async () => {
     if (!portfolio) return;
+    const loadedPortfolio = portfolio;
     try {
-      const response = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
+      const response = await portfoliosApi.getFitGap(loadedPortfolio.id, Number(vacancyId));
       setReport(response.data.report);
       setReportError(null);
     } catch (error) {
