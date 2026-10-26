@@ -42,7 +42,7 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 
 ## 5. Hasil pengujian
 
-CI terbaru yang mencakup positive-control tenant dan same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781.
+CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI pada branch HEAD dokumentasi final `c15c0492a90d32815aeb2450e1e7c0d206c99560` juga lulus: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261574956.
 
 Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
 
