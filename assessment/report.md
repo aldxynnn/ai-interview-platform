@@ -42,25 +42,29 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 
 ## 5. Hasil pengujian
 
-CI historis pada commit `1d285f951ce12857a8f9b86a07381d78cacc8f5b` dilaporkan lulus: 16 RSpec examples / 0 failures, Vitest, production build, serta migration rollback dan re-apply pada PostgreSQL disposable.
+CI terbaru yang mencakup positive-control tenant dan same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781.
 
-**Verifikasi terbaru:** setelah regression spec menemukan `AbstractController::DoubleRenderError`, helper `find_vacancy!` diperbaiki agar mengembalikan `nil` setelah merender error sehingga controller berhenti dengan benar. CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61` lulus: job API RSpec dan job Web (Vitest + production build) sukses; migration rollback dan re-apply juga sukses dalam job API. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346. Browser E2E/responsive, screenshot aktual, Gemini live/timeout, dan setup dari clone bersih tetap belum dilakukan atau belum terverifikasi.
+Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
 
+Browser E2E/responsive, screenshot aktual, Gemini live/timeout, dan setup dari clone bersih belum dilakukan atau belum terverifikasi. CI hijau tidak membuktikan item-item manual tersebut.
 ## 6. AI Verification Moment
 
-Review lanjutan menemukan `Api::V1::PortfoliosController#find_vacancy!` menggunakan `Vacancy.find_by(id: id)` tanpa `tenant_id`, padahal portfolio sudah di-scope ke tenant aktif. Endpoint scheduling Fit/Gap dapat menerima ID vacancy tenant lain. Query diperbaiki menjadi `Vacancy.find_by(id: id, tenant_id: current_tenant_id)` dan regression request spec ditambahkan. Ini temuan nyata pada implementasi AI-assisted, bukan contoh hipotetis; test baru belum terkonfirmasi lulus pada CI terbaru.
+Verifikasi menemukan error path nyata pada `Api::V1::PortfoliosController#find_vacancy!`: saat vacancy tidak ditemukan atau ditolak, helper merender error tetapi sebelumnya mengembalikan hasil render yang truthy; controller lalu berlanjut dan dapat memicu `AbstractController::DoubleRenderError`. Helper diperbaiki agar merender error lalu mengembalikan `nil`, dan request spec membuktikan same-tenant path bekerja. CI awal menangkap kegagalan ini; CI setelah perbaikan lulus.
+
+Pembedaan penting: review awal juga menyorot query vacancy yang tidak menuliskan `tenant_id`. Investigasi lebih lanjut menemukan model `Vacancy` memakai `TenantScoped` default scope. Karena itu, `Vacancy.find_by(id: id)` saja tidak cukup untuk menyimpulkan adanya bypass tenant dalam konfigurasi ini. Query sekarang tetap mencantumkan `tenant_id: current_tenant_id` sebagai defense-in-depth. Seeded fault yang valid menggunakan `Vacancy.unscoped.find_by(id: id)` untuk benar-benar melewati default scope; hasilnya dicatat di bagian berikut.
 
 Detail: [verification-notes.md](verification-notes.md).
 
 ## 7. Seeded Fault Test
 
-Scratch branch: `scratch/seeded-fault-fitgap-20261026`.
+Percobaan valid dijalankan pada branch terpisah `scratch/seeded-fault-unscoped-20261026`, berbasis commit dengan positive-control test.
 
-- Fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/91f2405bd96395bc508bb99e7ea6541e0b0d3305
-- Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/74317ce7cd093da7825b2cb9d43f8917e26e1377
+- Fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316 — mengubah lookup menjadi `Vacancy.unscoped.find_by(id: id)`.
+- CI fault: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272 — **gagal sesuai harapan**: request lintas tenant menerima 503, bukan 404; 19 examples, 1 failure. Ini membuktikan regression test mendeteksi bypass tenant scope.
+- Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8f3e024ec8a8c78a5818d — mengembalikan lookup dengan tenant scope.
+- CI recovery: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460 — **lulus**.
 
-Percobaan awal di branch lama tidak terisolasi dengan benar karena test gagal akibat `DoubleRenderError` baik saat fault maupun recovery; hasil itu bukan bukti valid bahwa tenant fault yang memicu kegagalan. Percobaan terisolasi baru berjalan pada `scratch/seeded-fault-isolated-20261026`, dibuat dari commit yang telah memperbaiki error response. Fault commit `c5268e6f2a5384624db07bf4bbc822307174c06c`; recovery commit `0398928da567264baed414bda2f3723feab8a48f`. CI kedua commit masih berjalan saat laporan ini diperbarui; hasil akhir harus diperiksa sebelum mengklaim fault fail / recovery pass.
-
+Percobaan scratch sebelumnya tidak terisolasi dengan benar dan tidak dipakai sebagai bukti. Percobaan yang dicantumkan di atas adalah bukti fault/recovery yang valid; fault hanya berada di scratch branch, bukan branch implementasi.
 ## 8. Privasi, UU PDP, dan risiko tersisa
 
 Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/dasar pemrosesan, pemberitahuan kandidat, minimisasi, retensi/penghapusan, kontrol akses, transmisi ke penyedia AI, penerima data, dan kewajiban UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Ini daftar risiko untuk ditinjau, bukan kesimpulan legal atau klaim pelanggaran.
@@ -68,16 +72,15 @@ Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/
 ## 9. Submission dan tindak lanjut
 
 - Branch: https://github.com/aldxynnn/ai-interview-platform/tree/take-home/trustworthy-fitgap-20261026
-- CI historis: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40256979092
-- PR: belum dibuat. Branch implementasi siap untuk review; buat PR ke upstream setelah memastikan hasil CI terbaru dan isi deskripsi dengan batasan verifikasi.
+- CI terbaru (19 RSpec examples, 0 failures; Vitest/build/migration checks lulus): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781
+- PR: pembuatan melalui integrasi GitHub ditolak dengan HTTP 403 (Resource not accessible by integration); tidak ada PR yang dibuat. Buat PR manual dari fork ke upstream menggunakan branch di atas.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
 - Local setup: ikuti `api/README.md` dan `web/README.md`; belum diverifikasi dari clone bersih.
 
 ### Acceptance criteria yang belum tertutup
 
-1. Konfirmasi CI terbaru pada branch implementasi dan hasil test tenant baru.
-2. Tunjukkan log seeded fault yang gagal, lalu bukti recovery pass.
-3. Jalankan browser smoke test desktop/mobile, periksa console/network, keyboard/focus, empty/error/long-text states; ambil screenshot aktual.
-4. Verifikasi local setup dan failure path Gemini dengan stub; live integration jika kredensial tersedia.
-5. Siapkan PR sesuai izin pemilik repository serta video walkthrough 3–5 menit.
+1. Jalankan browser smoke test desktop/mobile, periksa console/network, keyboard/focus, empty/error/long-text states; ambil screenshot aktual.
+2. Verifikasi local setup dari clone bersih dan failure path Gemini dengan stub; live integration jika kredensial tersedia.
+3. Buat PR manual ke upstream (pembuatan via integrasi ditolak HTTP 403).
+4. Rekam dan host video walkthrough 3–5 menit; tambahkan link video pada PR/submission.
