@@ -1,10 +1,10 @@
 # Rakamin Take-home — Product Impact & Fit/Gap Reliability
 
 Tanggal: 26 Oktober 2026  
-Branch implementasi: `take-home/trustworthy-fitgap-20261026`  
+Branch final untuk PR: `take-home/fitgap-reliability-final`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
-> **Status akhir: belum sepenuhnya siap diserahkan.** Implementasi utama telah dibuat dan CI historis lulus, tetapi hasil CI untuk regression test terbaru belum terkonfirmasi; seeded fault belum memiliki bukti log bahwa test benar-benar gagal; browser/responsive screenshot, local clean setup, Gemini live, PR, dan video walkthrough belum tersedia.
+> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI branch implementasi terbaru lulus pada run 40261724286. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
 
 ## 1. Produk dan pengguna
 
@@ -42,7 +42,7 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 
 ## 5. Hasil pengujian
 
-CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI pada branch HEAD dokumentasi final `c15c0492a90d32815aeb2450e1e7c0d206c99560` juga lulus: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261574956.
+CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch HEAD implementasi terbaru lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286.
 
 Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
 
@@ -72,8 +72,8 @@ Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/
 ## 9. Submission dan tindak lanjut
 
 - Branch: https://github.com/aldxynnn/ai-interview-platform/tree/take-home/trustworthy-fitgap-20261026
-- CI terbaru (19 RSpec examples, 0 failures; Vitest/build/migration checks lulus): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781
-- PR: pembuatan melalui integrasi GitHub ditolak dengan HTTP 403 (Resource not accessible by integration); tidak ada PR yang dibuat. Buat PR manual dari fork ke upstream menggunakan branch di atas.
+- CI branch implementasi HEAD (API RSpec + Web Vitest/build + migration rollback/re-apply) lulus: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286
+- PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch final yang disiapkan untuk PR: `take-home/fitgap-reliability-final`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
 - Local setup: ikuti `api/README.md` dan `web/README.md`; belum diverifikasi dari clone bersih.
@@ -82,5 +82,5 @@ Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/
 
 1. Jalankan browser smoke test desktop/mobile, periksa console/network, keyboard/focus, empty/error/long-text states; ambil screenshot aktual.
 2. Verifikasi local setup dari clone bersih dan failure path Gemini dengan stub; live integration jika kredensial tersedia.
-3. Buat PR manual ke upstream (pembuatan via integrasi ditolak HTTP 403).
+3. Buat PR dari branch final `take-home/fitgap-reliability-final` ke upstream `main`; integrasi create PR ditolak HTTP 403.
 4. Rekam dan host video walkthrough 3–5 menit; tambahkan link video pada PR/submission.
