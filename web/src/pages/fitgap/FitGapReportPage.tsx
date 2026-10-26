@@ -74,7 +74,7 @@ export default function FitGapReportPage() {
     setRequesting(true);
     setReportError(null);
     try {
-      const response = await portfoliosApi.triggerFitGap(loadedPortfolio.id, Number(vacancyId));
+      const response = await portfoliosApi.triggerFitGap(portfolio.id, Number(vacancyId));
       setReport(response.data.report);
       setPageError(null);
     } catch (error) {
@@ -99,7 +99,7 @@ export default function FitGapReportPage() {
         const status = (error as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
           try {
-            const response = await portfoliosApi.triggerFitGap(portfolio.id, Number(vacancyId));
+            const response = await portfoliosApi.triggerFitGap(loadedPortfolio.id, Number(vacancyId));
             if (!cancelled) setReport(response.data.report);
           } catch (requestError) {
             if (!cancelled) setReportError(getErrorMessage(requestError, "The fit/gap report could not be generated."));
