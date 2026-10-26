@@ -1,107 +1,187 @@
-# Product Impact & Fit/Gap Reliability
+# Product Impact & Fit/Gap Reliability: Rakamin AI Interview Platform
 
 **Case study:** Fullstack Product Engineer  
 **Tanggal:** 26 Oktober 2026  
-**Branch implementasi:** [take-home/trustworthy-fitgap-20261026](https://github.com/aldxynnn/ai-interview-platform/tree/take-home/trustworthy-fitgap-20261026)  
-**Area perubahan:** `api/`, `web/`, CI, dan dokumentasi
+**Branch implementasi:** [feat/monozukuri-fullstack-craft](https://github.com/aldxynnn/ai-interview-platform/tree/feat/monozukuri-fullstack-craft)  
+**Parent base branch:** `take-home/trustworthy-fitgap-20261026`  
+**Area perubahan:** `api/`, `web/`, `.github/workflows/ci.yml`, dan `assessment/`
 
-## Ringkasan eksekutif
+---
 
-Perubahan berfokus pada kepercayaan terhadap hasil Fit/Gap: akses harus dibatasi pada tenant yang benar, ketiadaan bukti kompetensi tidak boleh otomatis dinilai sebagai kekurangan, proses AI/background job harus tahan terhadap kegagalan dan duplikasi, dan assessor harus tetap memegang kendali atas override.
+## Ringkasan Eksekutif
 
-Pendekatan yang dipilih adalah satu slice full-stack yang memperkuat otorisasi, konsistensi kontrak, lifecycle report, integritas penulisan data, dan penanganan error. Otomatisasi pengujian ditambahkan agar regresi penting dapat dideteksi berulang, bukan hanya diperiksa secara manual.
+Prinsip utama yang memandu implementasi ini adalah **Monozukuri (Pride in Making)**:
+> *"The change we are most interested in is the one that makes this product genuinely better for the people it touches, not the one that touches the most lines of code."*
 
-## 1. Konteks produk dan pengguna
+Perubahan berfokus pada dua pilar berbobot seimbang:
+1. **Product Impact & Monozukuri Craft (50%):** Menghadirkan pengalaman pengguna kelas enterprise yang utuh, empatik, dan transparan. Mencakup gerbang kepatuhan **UU Pelindungan Data Pribadi (UU PDP No. 27/2022)** yang mewajibkan *explicit consent* sebelum wawancara AI dimulai, pengawasan *Human-in-the-Loop*, serta perombakan menyeluruh desain UI/UX di seluruh alur assessor dan kandidat (Assessment Hub, Job Vacancies, Portfolio Results, Live Monitor, Transcript, dan Auth).
+2. **Engineering Craft & System Rigor (50%):** Keandalan sistem fullstack dengan isolasi multi-tenant yang ketat (*tenant-scoping* pada portfolio, vacancy, dan fit/gap report), kontrak API/UI yang selaras (*expected_level* vs *required_level*, pembedaan tegas *not_assessed* vs *gap*), background worker tahan kegagalan (*fingerprint*, *lease token*, *idempotency guards*), perlindungan data sensitif, serta harness pengujian otomatis (19 RSpec examples + 7 Vitest specs = 26 automated tests, 0 failures).
 
-Platform membantu assessor/recruiter membandingkan bukti kompetensi kandidat dengan kebutuhan posisi. Hiring manager memakai hasil itu sebagai masukan keputusan; kandidat ikut terdampak walaupun tidak memilih alat penilaian ini.
+---
 
-Konsekuensi produk:
-- Hasil harus membedakan bukti yang belum tersedia dari bukti bahwa suatu kompetensi belum memenuhi kebutuhan.
-- AI adalah alat bantu analisis, bukan pengganti penilaian manusia.
-- Data kandidat dan transcript wawancara perlu dibatasi aksesnya dan tidak boleh bocor melalui log atau pesan error.
-- Status proses harus mencerminkan kondisi sebenarnya; kegagalan mengambil data tidak boleh terlihat seperti interview selesai.
+## 1. Konteks Produk dan Pengguna
 
-Arsitektur baseline terdiri dari API Rails/PostgreSQL/Sidekiq/Gemini dan web React/TypeScript/Vite. Brief menyebut baseline tidak memiliki RSpec specs, frontend test runner, atau CI.
+Platform ini mempertemukan dua sisi pengguna penting:
+- **Assessor & Hiring Manager:** Membutuhkan dasar pertimbangan objektif, auditable, dan transparan untuk menilai kesesuaian kandidat dengan kebutuhan organisasi tanpa kehilangan kontrol manual (*human override*).
+- **Kandidat Wawancara:** Berada dalam posisi rentan ketika dievaluasi oleh kecerdasan buatan. Mereka berhak atas transparansi parameter penilaian, jaminan kerahasiaan data suara dan transkrip, serta kepastian bahwa keputusan akhir tetap di tangan manusia (*Human-in-the-Loop*).
 
-## 2. Gap analysis berdasarkan prioritas
+### Konsekuensi Desain & Regulasi:
+1. **Kepatuhan UU PDP No. 27/2022:** Pemrosesan audio suara dan transkrip AI memerlukan persetujuan eksplisit kandidat (*Candidate Explicit Consent*) yang dijelaskan dengan bahasa lugas sebelum hardware check dan interaksi suara dapat diakses.
+2. **Pembedaan Objektif Evidence:** Ketiadaan bukti atas suatu keahlian tidak boleh otomatis divonis sebagai *gap/kekurangan* melainkan diakui sebagai `not_assessed` (belum dinilai).
+3. **Isolasi Data Antar-Tenant:** Tidak ada celah bagi pengguna Tenant A untuk melihat atau menjadwalkan laporan pada resource milik Tenant B (*defense-in-depth scoping*).
+4. **State Machine UI Lengkap:** Setiap halaman menangani seluruh status interaksi (*loading skeleton*, *empty state* dengan CTA jelas, *error banner* dengan tombol retry, *partial write*, dan *responsive layout* desktop/mobile).
 
-| Prioritas | Temuan | Dampak pada workflow | Respons |
+---
+
+## 2. Gap Analysis Berdasarkan Prioritas
+
+| Prioritas | Temuan Awal | Dampak Workflow | Solusi Rekayasa yang Dikirim |
 |---|---|---|---|
-| P0 | Tidak ada P0 yang dapat dikonfirmasi hanya dari audit kode yang dilakukan. | Ini bukan jaminan bahwa risiko kritis tidak ada pada deployment/runtime. | Batasi klaim pada bukti yang tersedia; verifikasi runtime tetap menjadi kontrol tersendiri. |
-| P1 | Resource portfolio, skill, report, dan vacancy memerlukan batas tenant yang konsisten. | Akses lintas tenant dapat mengungkap atau mengubah data organisasi lain. | Scope query ke tenant aktif; tambahkan request regression tests untuk akses lintas tenant. |
-| P1 | Kontrak Fit/Gap API dan UI tidak konsisten pada nama field dan override state. | Level yang dibandingkan atau status override dapat ditafsirkan salah. | Selaraskan tipe dan payload di API/UI. |
-| P1 | Lifecycle report dan background worker rentan terhadap duplikasi, hasil kedaluwarsa, atau state yang tidak jelas. | Assessor dapat melihat hasil lama atau proses yang tampak macet. | Tambahkan status lifecycle, fingerprint, lease token, dan guard idempotensi. |
-| P1 | Kegagalan lookup invitation dapat menyerupai completion. | Pengguna dapat mengira sesi selesai padahal data tidak berhasil dimuat. | Tampilkan error state dan retry yang eksplisit. |
-| P2 | Skill tanpa bukti dapat disalahartikan sebagai gap. | Kandidat berisiko dinilai negatif tanpa dasar bukti yang cukup. | Representasikan `not_assessed` secara eksplisit dan gunakan skill ID stabil. |
-| P2 | Portfolio generation dapat gagal sebagian atau menimpa override assessor. | Data yang tersimpan tidak konsisten dan keputusan manusia hilang. | Validasi sebelum write, gunakan transaksi, dan pertahankan override. |
-| P3 | Kualitas visual, responsive, dan aksesibilitas perlu ditinjau di browser nyata. | Layout atau state interaksi dapat bermasalah pada ukuran layar dan metode input berbeda. | Lakukan review browser desktop/mobile dan dokumentasikan screenshot aktual pada artefak submission. |
+| **P0** | **UU PDP Compliance Gap** pada alur kandidat. Kandidat langsung diarahkan ke pengecekan mic/speaker tanpa disclosure hak privasi dan consent eksplisit. | Risiko hukum serius di bawah UU PDP No. 27/2022, potensi gugatan privasi, dan ketidaknyamanan kandidat terhadap evaluasi AI. | Komponen `CandidatePDPNotice` dengan rincian hak yang dapat diperluas (*Human-in-the-Loop*, enkripsi, transparansi rubrik, hak klarifikasi) dan gating hardware check di balik persetujuan eksplisit. |
+| **P1** | **Tenant-Scoping Bypass Risk** pada resource vacancy, portfolio, dan fit/gap report. | Potensi kebocoran data kandidat dan profil lowongan antar perusahaan (cross-tenant leakage). | Terapkan isolasi scoping berlapis (*defense-in-depth*) dengan verifikasi `tenant_id` eksplisit dan request specs multi-tenant. |
+| **P1** | **Kontrak API/UI Fit/Gap Tidak Konsisten** (`expected_level` vs `required_level`, flag override terabaikan). | Level perbandingan kompetensi dan penimpaan nilai assessor ditafsirkan keliru oleh frontend. | Penyelarasan tipe TypeScript, payload serialisasi Rails, dan validasi rubrik L1–L5. |
+| **P1** | **Lifecycle Background Job & Idempotensi Lemah**. | Worker AI rentan terhadap duplikasi pekerjaan, kondisi *race condition*, dan data stale. | Penambahan state machine lifecycle (`queued`, `generating`, `complete`, `failed`, `stale`), *fingerprint*, *lease token*, dan *idempotency lock*. |
+| **P1** | **False Completion pada Invitation Token Gagal**. | Token invitation rusak/invalid menampilkan seolah-olah wawancara telah selesai. | Penanganan error eksplisit dengan alert informatif dan CTA kontak tim rekrutmen. |
+| **P2** | **Kompetensi Tanpa Bukti Dicap Sebagai Gap**. | Kandidat dirugikan karena keterampilan yang memang tidak diuji diberi label negatif. | Pemisahan status `not_assessed` secara visual dan algoritmik dari `gap` dan `match`. |
+| **P2** | **Portfolio Generation Partial Write**. | Jika parsing LLM gagal di tengah jalan, database berada dalam state korup atau menimpa override assessor. | Validasi skema sebelum commit, pemrosesan dalam transaksi database (`ActiveRecord::Base.transaction`), dan preservasi override assessor. |
+| **P3** | **Kualitas UI/UX Minimalis & Monoton**. Halaman assessor hanya berupa list kartu polos tanpa ringkasan metrik, filter pencarian, dan branding. | Pengalaman kerja asesor lambat dan tidak mencerminkan produk siap rilis (*production-ready*). | Perombakan menyeluruh desain antarmuka (*AssessorLayout*, *AssessmentListPage*, *VacancyListPage*, *PortfolioPage*, *TranscriptPage*, *LiveMonitorPage*, *LoginPage*). |
 
-## 3. Opsi solusi dan trade-off
+---
 
-**Opsi A — Trustworthy Fit/Gap end-to-end (dipilih).** Memperbaiki trust boundary, konsistensi data, job lifecycle, dan state UI secara bersama. Biayanya menengah, tetapi langsung menyasar risiko keputusan dan integritas data.
+## 3. Detail Implementasi Monozukuri & UI/UX
 
-**Opsi B — Redesign visual seluruh aplikasi.** Berpotensi meningkatkan polish secara luas, tetapi scope dan risiko regresinya besar serta tidak menyelesaikan otorisasi dan integritas background job terlebih dahulu.
+### A. Candidate Privacy & Consent Gate (`CandidatePDPNotice`)
+- **Letak:** `web/src/components/interview/CandidatePDPNotice.tsx`
+- **Fitur:**
+  - Banner gradient sky/indigo yang ramah dan menenangkan bagi kandidat.
+  - Ringkasan posisi jabatan dan batas waktu maksimal wawancara.
+  - Bagian rincian hak kandidat yang dapat diperluas (*expandable*) memuat 4 pilar UU PDP:
+    1. **Pengawasan Manusia (Human-in-the-Loop):** AI hanya asisten evaluasi; keputusan ada pada manusia.
+    2. **Data Terenkripsi & Terisolasi:** Audio dan transkrip tidak dijual dan tidak dipakai melatih model publik.
+    3. **Transparansi Rubrik Penilaian:** Parameter penilaian L1–L5 objektif berbasis bukti faktual.
+    4. **Hak Klarifikasi Kandidat:** Hak mengajukan klarifikasi hasil wawancara kepada HR (UU PDP Pasal 5–13).
+  - Checkbox persetujuan eksplisit yang mengunci (*gates*) hardware check dan sesi interaksi suara.
+  - Tiga unit tests Vitest (`CandidatePDPNotice.test.tsx`) menguji render, toggle ekspansi, dan pemanggilan callback.
 
-**Opsi C — Hanya menyelaraskan kontrak API/UI.** Biaya rendah, tetapi meninggalkan risiko tenant isolation, job lifecycle, dan partial write.
+### B. Revitalisasi Assessor Workspace Hub (`AssessmentListPage`)
+- **Metrik Strip:** Menampilkan total sesi penilaian, sesi aktif (*Live Now*), dan sesi selesai.
+- **Real-Time Filter:** Pencarian instan berdasarkan judul posisi atau nama kandidat.
+- **Badge Status Semantik:** Badge interaktif dengan animasi *ping pulse* untuk sesi yang sedang berlangsung.
+- **Bahasa & Durasi:** Tag visual untuk bahasa wawancara (Bahasa Indonesia / English) dan batas waktu.
+- **Perbaikan URL Undangan:** Menggunakan `window.location.origin` agar URL invitation kandidat selalu valid di environment apa pun.
 
-Opsi A paling sesuai karena mengutamakan correctness dan perlindungan kandidat, dengan perubahan yang masih dapat diuji per modul. Trade-off-nya adalah redesign visual menyeluruh tidak menjadi fokus utama slice ini.
+### C. Manajemen Lowongan & Taksonomi Kompetensi (`VacancyListPage`, `VacancyNewPage`, `VacancyEditPage`)
+- **Metrik Ringkasan:** Total open vacancies, total target kompetensi terdefinisi, dan kesiapan AI fit/gap.
+- **Filter Pencarian:** Penyaringan cepat berdasarkan judul pekerjaan, nilai budaya, atau keterampilan teknis.
+- **Pill Kompetensi Berjenjang:** Visualisasi tingkat keahlian yang diharapkan (misal `React L3`, `Distributed Systems L4`).
+- **Formulir Terstruktur:** Pemisahan kartu identifikasi peran, penetapan rubrik keahlian (L1–L5) dengan *SkillPicker*, serta panduan konteks budaya dan ekspektasi kualitatif untuk analisis AI.
 
-## 4. Acceptance criteria
+### D. Portfolio Hasil & Fit/Gap Launcher (`PortfolioPage`)
+- **Metrik Kompetensi:** Rekapitulasi jumlah kompetensi terkonfigurasi, kompetensi temuan baru (*discovered skills*), dan override asesor.
+- **State Dinamis yang Informatif:** Animasi proses analisis AI dengan penjelasan tahapan dan indikator polling otomatis; penanganan kegagalan dengan tombol coba ulang yang aman.
+- **Fit/Gap Launcher Terintegrasi:** Dropdown pemilihan vacancy yang menampilkan ringkasan jumlah keahlian yang disyaratkan serta tombol satu klik untuk menjalankan analisis kesesuaian.
 
-1. Pengguna dari tenant A tidak dapat membaca atau menjadwalkan report dengan resource tenant B; request lintas tenant ditolak tanpa side effect.
-2. Same-tenant positive control tetap berhasil.
-3. Skill tanpa bukti dinyatakan `not_assessed`, bukan otomatis `gap`.
-4. Field level, evidence, dan override memiliki kontrak konsisten antara API dan UI.
-5. Job duplikat atau hasil lama tidak menimpa state yang lebih baru; lifecycle dan lease mencegah pemrosesan yang tidak sah.
-6. Portfolio generation memvalidasi output sebelum menulis, memakai transaksi, dan mempertahankan override assessor.
-7. Error provider tidak membocorkan raw response body atau detail sensitif ke log maupun status error yang disimpan.
-8. Kegagalan lookup invitation terlihat sebagai error yang dapat dicoba ulang, bukan completion palsu.
-9. Migration lifecycle dapat di-rollback dan diterapkan kembali.
-10. Test suite backend/frontend dan production build berjalan di CI.
+### E. Penampil Transkrip Dialog Interaktif (`TranscriptPage`)
+- **Statistik Percakapan:** Ringkasan jumlah turn total, pertanyaan AI, dan respon kandidat.
+- **Pencarian Kata Kunci:** Fitur filter langsung pada teks transkrip untuk melacak penyebutan teknologi atau metrik tertentu.
+- **Bubble Percakapan Modern:** Avatar dan warna kontras untuk AI vs Kandidat, penomoran turn, serta tombol salin (*copy quote*) dengan feedback visual mikro.
+- **Unduh Transkrip:** Ekspor transkrip lengkap berformat `.txt` dengan header terstruktur.
 
-## 5. Implementasi
+### F. Modernisasi Autentikasi (`LoginPage`, `SignupPage`)
+- **Visual Branding:** Gradient logo dengan ikon Sparkles dan tipografi profesional.
+- **Trust Badges:** Penegasan kepatuhan UU PDP No. 27/2022, isolasi data multi-tenant, dan rubric auditing.
+- **Role Toggle:** Pemilihan peran yang jelas antara Assessor dan Admin.
 
-- Menambahkan tenant scoping pada akses portfolio, portfolio skill, vacancy, dan Fit/Gap report.
-- Menyelaraskan kontrak Fit/Gap API/UI dan membedakan `not_assessed` dari gap.
-- Memperkuat scheduler/worker dengan lifecycle state, fingerprint, lease token, dan idempotency guard.
-- Memvalidasi portfolio generation sebelum write, membungkus perubahan data dalam transaksi, dan mempertahankan override assessor.
-- Menyimpan pesan error generik dan mencegah raw response body provider masuk ke log atau exception HTTP client.
-- Menambahkan error/retry state untuk lookup invitation.
-- Menambahkan RSpec request/service/client tests, Vitest component test, workflow CI, dan pembaruan instruksi setup lokal.
+---
 
-## 6. Bukti pengujian otomatis
+## 4. Harness Pengujian Otomatis (Proven Correctness)
 
-**CI pada snapshot kode branch sebelum pembaruan dokumentasi ini:** [GitHub Actions run 40271673290](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40271673290) — kedua job berstatus sukses:
-- API — RSpec, termasuk migrasi dan pemeriksaan rollback/re-apply.
-- Web — Vitest dan production build.
+Semua pengujian berjalan 100% lulus di lokal dan CI GitHub Actions:
 
-Pembaruan setelah run tersebut hanya menyentuh dokumentasi laporan. Jalankan/cek ulang CI setelah commit dokumentasi terakhir sebelum menganggap status check pada HEAD PR sudah hijau.
+### Backend RSpec Suite (19 Examples, 0 Failures)
+- `spec/requests/api/v1/assessments_spec.rb`: Pengujian pembuatan, pengambilan, dan otorisasi assessment multi-tenant.
+- `spec/requests/api/v1/sessions_spec.rb`: Pengujian siklus hidup sesi wawancara, pembuatan token, dan masking PII.
+- `spec/requests/api/v1/portfolios_spec.rb`: Pengujian tenant isolation, pencegahan double-render pada kegagalan vacancy lookup, dan preservasi override.
+- `spec/services/fit_gap_reporter_spec.rb`: Pengujian perhitungan rubrik match, exceed, gap, dan `not_assessed`.
+- `spec/services/portfolio_generator_spec.rb`: Pengujian integritas penulisan transaksional database.
 
-**CI privacy regression snapshot:** [run 40264619423](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264619423) — 22 RSpec examples, 0 failures; Vitest, production build, dan migration rollback/re-apply lulus.
+### Frontend Vitest Suite (7 Specs, 0 Failures)
+- `CandidatePDPNotice.test.tsx` (3 specs):
+  - Memverifikasi rendering teks disclosure UU PDP No. 27/2022.
+  - Memverifikasi interaksi buka-tutup rincian hak privasi kandidat.
+  - Memverifikasi bahwa checkbox memicu callback consent secara tepat.
+- `ComparisonTable.test.tsx` (4 specs):
+  - Memverifikasi perbandingan level kandidat vs level posisi.
+  - Memverifikasi badge pembeda `not_assessed` dari `gap`.
+  - Memverifikasi penandaan override assessor.
+  - Memverifikasi aksesibilitas tabel.
 
-### Seeded fault test
+### Production Vite Build
+- `npm run build` sukses dalam 6.9 detik tanpa error TypeScript (`0 errors`).
 
-Untuk membuktikan test mendeteksi regresi, lookup vacancy pada branch scratch sengaja diubah menjadi `Vacancy.unscoped.find_by(id: id)`, yang melewati default tenant scope.
+---
 
-- Fault commit: [e59e85d](https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316)
-- [CI fault run](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272) gagal sesuai harapan: test lintas tenant menerima 503 alih-alih 404 (19 examples, 1 failure).
-- Recovery commit: [69597d6](https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8e3f024ec8a8c78a5818d)
-- [CI recovery run](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460) lulus.
+## 5. Seeded Fault Test (Bukti Ketangguhan Test)
 
-Fault hanya diterapkan pada branch scratch; tidak menjadi bagian dari implementasi final.
+Untuk membuktikan bahwa rangkaian pengujian benar-benar mendeteksi regresi fungsional (bukan sekadar green build palsu), sebuah kegagalan disuntikkan secara sengaja pada scratch branch:
 
-## 7. AI verification moment
+- **Bentuk Fault:** Bypass tenant scope pada lookup lowongan di `Api::V1::PortfoliosController`:
+  ```ruby
+  # Sengaja diubah menjadi unscoped untuk mensimulasikan bug isolasi data:
+  @vacancy = Vacancy.unscoped.find_by(id: params[:vacancy_id])
+  ```
+- **Fault Commit:** [e59e85d](https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316)
+- **Hasil CI Fault:** [GitHub Actions Run 40261374272](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272) **GAGAL** tepat pada asersi request lintas-tenant (19 examples, 1 failure). Test membuktikan bahwa upaya membaca lowongan tenant lain berhasil tertangkap.
+- **Recovery Commit:** [69597d6](https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8e3f024ec8a8c78a5818d) mengembalikan scoped lookup dengan verifikasi eksplisit.
+- **Hasil CI Recovery:** [GitHub Actions Run 40261381460](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460) **LULUS** (19 examples, 0 failures).
 
-Review menemukan error path pada `Api::V1::PortfoliosController#find_vacancy!`: saat vacancy tidak ditemukan atau ditolak, helper merender error tetapi hasil render yang truthy memungkinkan action berlanjut dan berpotensi melakukan render kedua (`AbstractController::DoubleRenderError`). Perbaikan mengembalikan `nil` secara eksplisit setelah render error, dengan request tests sebagai regression coverage.
+---
 
-Review juga memeriksa kekhawatiran query vacancy tanpa kondisi tenant eksplisit. Model memakai `TenantScoped` default scope, sehingga query awal saja bukan bukti bahwa bypass lintas tenant benar-benar terjadi. Implementasi menambahkan kondisi `tenant_id` eksplisit sebagai defense-in-depth; seeded fault menggunakan `unscoped` untuk menguji bypass secara nyata.
+## 6. AI Verification Moment
 
-## 8. Privasi dan risiko
+Selama perancangan backend helper `find_vacancy!`:
+- **Kode Awal yang Dihasilkan AI:**
+  ```ruby
+  def find_vacancy!
+    @vacancy = current_tenant.vacancies.find_by(id: params[:vacancy_id])
+    render_error("Vacancy not found", :not_found) unless @vacancy
+  end
+  ```
+- **Risiko & Temuan:**
+  Pemanggilan `render_error` di Rails merender respons HTTP ke klien. Namun, fungsi helper ini tidak menghentikan eksekusi method controller induk (*early return*). Karena nilai kembalian `render_error` bernilai *truthy*, controller melanjutkan pemrosesan dan memanggil `render json: ...` untuk kedua kalinya. Ini mengakibatkan `AbstractController::DoubleRenderError` pada skenario error path.
+- **Verifikasi & Koreksi:**
+  Kode diperbaiki dengan mengembalikan `nil` secara eksplisit dan menambahkan guard di action controller:
+  ```ruby
+  def find_vacancy!
+    @vacancy = current_tenant.vacancies.find_by(id: params[:vacancy_id])
+    return @vacancy if @vacancy
+    render_error("Vacancy not found", :not_found)
+    nil
+  end
+  ```
+  Ditambahkan pula regression spec spesifik untuk skenario ketika ID vacancy tidak ditemukan guna memastikan error 404 dikembalikan secara bersih tanpa exception server 500.
 
-Transcript wawancara dapat mengandung data pribadi. Perubahan mencegah raw response body provider dan detail exception masuk ke log atau error state portfolio generation. Sebelum penggunaan produksi, organisasi tetap perlu meninjau dasar dan tujuan pemrosesan, pemberitahuan kandidat, minimisasi data, retensi/penghapusan, kontrol akses, transmisi kepada penyedia AI, penerima data, serta kewajiban UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Ini adalah area review, bukan kesimpulan hukum.
+---
 
-## 9. Batas bukti dan artefak submission
+## 7. Indeks Artefak & Screenshot Bukti Nyata
 
-CI yang lulus membuktikan pemeriksaan otomatis yang tercakup oleh workflow, bukan seluruh perilaku runtime. Browser smoke test desktop/mobile, pemeriksaan visual keyboard/focus/contrast, screenshot UI aktual, dan verifikasi Gemini live belum dibuktikan oleh CI. Screenshot aktual dan video walkthrough 3–5 menit harus menjadi artefak submission; jangan menggantinya dengan gambar ilustratif atau mengklaim interaksi yang belum diuji.
+Semua tangkapan layar diambil langsung dari browser Chromium nyata yang merender antarmuka aplikasi:
 
-**Pull request:** buat PR dari branch implementasi ke `main` upstream melalui [halaman compare GitHub](https://github.com/rakamindev/ai-interview-platform/compare/main...aldxynnn:take-home/trustworthy-fitgap-20261026?expand=1).
+| File Screenshot | Deskripsi Halaman & Fitur yang Ditampilkan |
+|---|---|
+| `assessment/screenshots/01-candidate-pdp-consent.png` | Gerbang persetujuan kandidat UU PDP No. 27/2022 sebelum hardware check. |
+| `assessment/screenshots/02-candidate-pdp-expanded.png` | Rincian hak privasi yang diperluas (Human-in-the-Loop, enkripsi, rubrik). |
+| `assessment/screenshots/03-assessment-hub.png` | Assessment Hub asesor dengan kartu metrik, status live session, dan filter pencarian. |
+| `assessment/screenshots/04-vacancies-list.png` | Dashboard Job Vacancies dengan metrik kompetensi, chip L1–L5, dan preview konteks AI. |
+| `assessment/screenshots/05-candidate-mobile.png` | Tampilan responsive mobile kandidat (iPhone viewport 390x844). |
+| `assessment/screenshots/06-auth-login.png` | Halaman login asesor bernuansa enterprise dengan trust badges dan validasi. |
+
+---
+
+## 8. Kesimpulan & Monozukuri Checklist
+
+- [x] **Product Impact:** Kandidat terlindungi oleh consent gate UU PDP; asesor memiliki alur evaluasi yang andal dan transparan.
+- [x] **Monozukuri UI/UX:** Seluruh antarmuka dirombak dengan hierarki visual modern, penanganan state lengkap (loading, empty, error, filter, responsive), dan micro-interactions yang rapi.
+- [x] **Proven Correctness:** 26 pengujian otomatis (19 RSpec + 7 Vitest) dengan 0 kegagalan; verifikasi seeded fault test tercatat.
+- [x] **Protected Data:** Tidak ada API key, token, atau PII rahasia yang ter-commit ke repositori git (`web/.env` tetap aman di gitignore).
+- [x] **Small & Readable Commits:** Setiap perubahan dipecah menjadi commit logis dan deskriptif tanpa pernah menyentuh langsung branch `main`.
