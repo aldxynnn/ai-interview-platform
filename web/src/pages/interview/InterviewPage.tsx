@@ -21,6 +21,7 @@ import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 import { useAudioWebSocket } from "@/hooks/useAudioWebSocket";
 import { sessionsApi } from "@/services/sessions";
 import HardwareCheck from "@/components/HardwareCheck";
+import CandidatePDPNotice from "@/components/interview/CandidatePDPNotice";
 import { AlertCircle, CheckCircle, Mic, MicOff } from "lucide-react";
 import type { CandidateInfo, InterviewState, InterviewSpeaker, TranscriptTurn } from "@/types";
 
@@ -28,6 +29,7 @@ export default function InterviewPage() {
   const { token } = useParams<{ token: string }>();
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo | null>(null);
   const [candidateInfoError, setCandidateInfoError] = useState<string | null>(null);
+  const [pdpConsented, setPdpConsented] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [interviewState, setInterviewState] = useState<InterviewState>("idle");
   const [speaker, setSpeaker] = useState<InterviewSpeaker>(null);
