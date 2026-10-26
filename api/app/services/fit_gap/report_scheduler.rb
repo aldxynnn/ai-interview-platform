@@ -47,9 +47,7 @@ module FitGap
             recoverable_report = report.failed? || report.stale? ||
                                  ((report.generating? || report.generation_status == "queued") && lease_expired)
             superseded_report = input_changed && (report.generating? || report.generation_status == "queued")
-            forced_running_report = force && (report.generating? || report.generation_status == "queued")
-
-            if refreshable_complete_report || recoverable_report || superseded_report || forced_running_report
+            if refreshable_complete_report || recoverable_report || superseded_report
               report.update!(
                 generation_status: "queued",
                 generation_error: nil,
