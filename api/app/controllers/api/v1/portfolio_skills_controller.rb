@@ -44,7 +44,7 @@ module Api
           # Preserve the saved human override. The report remains stale/failed and
           # the next report request can retry without losing the assessor action.
           report.update_columns(
-            generation_status: "stale",
+            generation_status: "failed",
             generation_error: "Report refresh could not be scheduled",
             generation_started_at: nil
           )
