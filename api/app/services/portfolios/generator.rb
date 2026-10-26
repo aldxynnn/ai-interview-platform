@@ -148,33 +148,131 @@ module Portfolios
     end
 
     def save_skills(portfolio, response)
+      data = validated_response(response)
+      desired_rows = data.fetch("configured_skills") + data.fetch("discovered_skills")
+      existing = portfolio.portfolio_skills.includes(:assessor_override).to_a
+
+      # Only commit a complete, validated AI response. A failed insert/update rolls
+      # the whole replacement back and keeps the previous portfolio available.
+      PortfolioSkill.transaction do
+        retained_ids = []
+
+        desired_rows.each do |attributes|
+          current = existing.find { |skill| same_skill?(skill, attributes) }
+          if current
+            current.update!(attributes)
+            # Preserve the assessor's chosen level and notes while keeping the
+            # baseline AI score in sync with the newly generated assessment.
+            current.assessor_override&.update!(ai_level: current.ai_level)
+            retained_ids << current.id
+          else
+            created = portfolio.portfolio_skills.create!(attributes)
+            retained_ids << created.id
+          end
+        end
+
+        existing.each do |skill|
+          next if retained_ids.include?(skill.id)
+          # Never cascade-delete a recorded human override during regeneration.
+          next if skill.assessor_override.present?
+
+          skill.destroy!
+        end
+      end
+    end
+
+    def validated_response(response)
       data = response.is_a?(Hash) ? response : JSON.parse(response)
-
-      # Destroy existing skills (idempotent regeneration)
-      portfolio.portfolio_skills.destroy_all
-
-      (data['configured_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           skill_data['skill_id'],
-          skill_label:        skill_data['skill_label'],
-          is_discovered:      false,
-          ai_level:           skill_data['level'].to_i.clamp(1, 5),
-          ai_confidence:      skill_data['confidence'],
-          evidence:           Array(skill_data['evidence']).first(3),
-          competency_summary: skill_data['competency_summary']
-        )
+      unless data.is_a?(Hash) && data["configured_skills"].is_a?(Array) && data["discovered_skills"].is_a?(Array)
+        raise JSON::ParserError, "Expected configured_skills and discovered_skills arrays"
       end
 
-      (data['discovered_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           nil,
-          skill_label:        skill_data['skill_label'],
-          is_discovered:      true,
-          ai_level:           skill_data['level'].to_i.clamp(1, 5),
-          ai_confidence:      skill_data['confidence'],
-          evidence:           Array(skill_data['evidence']).first(3),
-          competency_summary: skill_data['competency_summary']
-        )
+      configured_definitions = @session.assessment.assessment_skills.order(:display_order).to_a
+      candidate_turns = @session.transcript_turns.where(speaker: "candidate").pluck(:text)
+      configured = validate_skill_rows(data["configured_skills"], discovered: false, configured_definitions:, candidate_turns:)
+      discovered = validate_skill_rows(data["discovered_skills"], discovered: true, configured_definitions:, candidate_turns:)
+
+      keys = (configured + discovered).map do |row|
+        [row[:is_discovered], row[:skill_id], row[:skill_label].downcase]
+      end
+      raise JSON::ParserError, "Duplicate skill rows returned by the model" unless keys.uniq.length == keys.length
+
+      missing = configured_definitions.reject do |definition|
+        configured.any? do |row|
+          if definition.skill_id.present?
+            row[:skill_id] == definition.skill_id
+          else
+            row[:skill_label].casecmp?(definition.skill_label)
+          end
+        end
+      end
+      raise JSON::ParserError, "Model response omitted configured assessment skills" if missing.any?
+
+      { "configured_skills" => configured, "discovered_skills" => discovered }
+    end
+
+    def validate_skill_rows(rows, discovered:, configured_definitions:, candidate_turns:)
+      rows.map do |raw|
+        raise JSON::ParserError, "Skill row must be an object" unless raw.is_a?(Hash)
+
+        label = raw["skill_label"]
+        level = raw["level"]
+        confidence = raw["confidence"]
+        evidence = raw["evidence"]
+        summary = raw["competency_summary"]
+
+        raise JSON::ParserError, "Skill label missing" unless label.is_a?(String) && label.strip.present?
+        raise JSON::ParserError, "Skill level must be an integer from 1 to 5" unless level.is_a?(Integer) && level.between?(1, 5)
+        raise JSON::ParserError, "Invalid skill confidence" unless PortfolioSkill::CONFIDENCE_LEVELS.include?(confidence)
+        raise JSON::ParserError, "Evidence must be an array of strings" unless evidence.is_a?(Array) && evidence.all? { |quote| quote.is_a?(String) }
+        raise JSON::ParserError, "Competency summary missing" unless summary.is_a?(String) && summary.strip.present?
+
+        skill_id = nil
+        if discovered
+          raise JSON::ParserError, "Discovered skill duplicates a configured skill" if configured_definitions.any? { |definition| definition.skill_label.casecmp?(label.strip) }
+        else
+          raw_id = raw["skill_id"]
+          raise JSON::ParserError, "Skill ID must be a string or null" if raw_id.present? && !raw_id.is_a?(String)
+          definition = if raw_id.present?
+                         configured_definitions.find { |item| item.skill_id == raw_id }
+                       else
+                         configured_definitions.find { |item| item.skill_id.blank? && item.skill_label.casecmp?(label.strip) }
+                       end
+          raise JSON::ParserError, "Model returned an unknown configured skill" unless definition
+          skill_id = definition.skill_id
+          label = definition.skill_label
+        end
+
+        supported_evidence = evidence.map(&:strip).reject(&:blank?).uniq.select do |quote|
+          normalized_quote = normalize_quote(quote)
+          normalized_quote.present? && candidate_turns.any? do |turn|
+            normalize_quote(turn).include?(normalized_quote)
+          end
+        end.first(3)
+
+        {
+          skill_id: skill_id,
+          skill_label: label.strip,
+          is_discovered: discovered,
+          ai_level: level,
+          ai_confidence: confidence,
+          evidence: supported_evidence,
+          competency_summary: summary.strip
+        }
+      end
+    end
+
+    def normalize_quote(value)
+      value.to_s.downcase.gsub(/\s+/, " ").strip
+    end
+
+    def same_skill?(existing, attributes)
+      return false unless existing.is_discovered == attributes[:is_discovered]
+
+      if attributes[:skill_id].present?
+        existing.skill_id == attributes[:skill_id]
+      else
+        existing.skill_label.casecmp?(attributes[:skill_label])
       end
     end
   end
