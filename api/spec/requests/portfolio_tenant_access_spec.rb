@@ -33,8 +33,10 @@ RSpec.describe "Portfolio tenant access", type: :request do
     @tenant_a = create_organization("tenant-a-request-spec")
     @tenant_b = create_organization("tenant-b-request-spec")
     @token_a = JsonWebToken.encode(user_id: 9001, role: "admin", scheme: @tenant_a.scheme)
+    @portfolio_a, @skill_a = create_portfolio(@tenant_a)
     @portfolio_b, @skill_b = create_portfolio(@tenant_b)
-    @vacancy_a = Vacancy.create!(tenant_id: @tenant_a.id, created_by: 9001, role_title: "Synthetic role")
+    @vacancy_a = Vacancy.create!(tenant_id: @tenant_a.id, created_by: 9001, role_title: "Synthetic role A")
+    @vacancy_b = Vacancy.create!(tenant_id: @tenant_b.id, created_by: 9002, role_title: "Synthetic role B")
     Current.clear
     @headers = { "Authorization" => "Bearer #{@token_a}" }
   end
@@ -57,6 +59,16 @@ RSpec.describe "Portfolio tenant access", type: :request do
 
   it "does not allow exporting another tenant's portfolio" do
     get "/api/v1/portfolios/#{@portfolio_b.id}/export", headers: @headers
+
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "does not schedule a fit-gap report using another tenant's vacancy" do
+    expect do
+      post "/api/v1/portfolios/#{@portfolio_a.id}/fitgap",
+           headers: @headers,
+           params: { vacancy_id: @vacancy_b.id }
+    end.not_to change(FitGapReport, :count)
 
     expect(response).to have_http_status(:not_found)
   end
