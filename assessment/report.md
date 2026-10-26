@@ -44,7 +44,7 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 
 ## 5. Hasil pengujian
 
-CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 22 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch HEAD implementasi terbaru lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286.
+CI code/test pada commit `5a0b0dd488013d52f7623860a83b703db931bda5` melaporkan 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch implementasi sebelumnya lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286. CI final PR-ready branch dengan privacy regression tests (22 examples / 0 failures): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264619423.
 
 Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
 
