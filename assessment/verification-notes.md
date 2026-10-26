@@ -2,31 +2,26 @@
 
 Date: 2026-10-26
 
-## AI Verification Moment (real finding, corrected)
+## AI Verification Moment (real defect, corrected)
 
-During a follow-up review of the implementation, `Api::V1::PortfoliosController#find_vacancy!` was found to use an unscoped `Vacancy.find_by(id: id)`, even though portfolio lookup was tenant-scoped. This meant a tenant-A assessor could submit a tenant-B vacancy ID to the Fit/Gap scheduling endpoint. The exact downstream exposure depends on the report lifecycle, but the missing tenant boundary was a concrete authorization defect.
+CI initially caught an error-handling defect in `Api::V1::PortfoliosController#find_vacancy!`: when a vacancy lookup failed, the helper rendered an error but returned a truthy render result. The calling action then continued and could render again, causing `AbstractController::DoubleRenderError`. The helper was changed to render the error and explicitly return `nil`. A same-tenant GET positive control and same-tenant POST scheduling test were added. The implementation CI subsequently passed with 19 RSpec examples and 0 failures.
 
-Correction on `take-home/trustworthy-fitgap-20261026`: scope vacancy lookup by both ID and `current_tenant_id`.
-
-Regression test added in `api/spec/requests/portfolio_tenant_access_spec.rb`: a tenant-A portfolio must not schedule a Fit/Gap report against tenant-B's vacancy, and the request must not create a report.
-
-This is an actual defect found in the AI-assisted implementation and verified by reading the controller flow; it is not a hypothetical example. The test was added after the previously recorded successful CI run, so its passing status must not be inferred from that older run.
+A separate review concern was the query's missing explicit `tenant_id`. The `Vacancy` model includes `TenantScoped`, whose default scope also filters by `Current.tenant_id`; therefore the earlier `Vacancy.find_by(id: id)` line alone was not proof of an actual tenant-scope bypass. The implementation now includes the explicit tenant condition as defense-in-depth. To make the seeded fault meaningful, the experiment uses `Vacancy.unscoped.find_by(id: id)` to deliberately bypass the default scope.
 
 ## Seeded fault experiment
 
-Initial scratch attempt (`scratch/seeded-fault-fitgap-20261026`) was not an isolated experiment: both the deliberate-fault and recovery CI runs failed because the new test hit `AbstractController::DoubleRenderError` in the error helper. This did not prove the intended tenant-scope regression.
+Valid isolated experiment branch: `scratch/seeded-fault-unscoped-20261026`, based on the implementation with positive-control tests.
 
-A clean isolated attempt was then started from the implementation commit after fixing the error helper: `scratch/seeded-fault-isolated-20261026`.
+- Fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316 — changed the lookup to `Vacancy.unscoped.find_by(id: id)`, deliberately bypassing the tenant default scope.
+- Fault Actions run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272 — **failed as expected**. The cross-tenant scheduling test expected 404 but received 503; RSpec reported 19 examples, 1 failure.
+- Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8f3e024ec8a8c78a5818d — restored `Vacancy.find_by(id: id, tenant_id: current_tenant_id)`.
+- Recovery Actions run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460 — **passed**.
+- The fault was only in the scratch branch, never in the implementation branch.
 
-- Seeded fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/91f2405bd96395bc508bb99e7ea6541e0b0d3305 — intentionally changed the tenant-scoped vacancy lookup back to an unscoped lookup.
-- Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/74317ce7cd093da7825b2cb9d43f8917e26e1377 — restored the tenant-scoped lookup.
-- The scratch branch is separate from the implementation branch; the deliberate fault was not applied to the implementation branch.
-- Isolated fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/c5268e6f2a5384624db07bf4bbc822307174c06c (removes only `tenant_id` from vacancy lookup, preserving error handling).
-- Isolated recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/0398928da567264baed414bda2f3723feab8a48f (restores tenant scope).
-- **Verification status: pending Actions completion** for the isolated fault and recovery commits. Do not claim the intended failure/pass until the run logs are checked.
+Earlier scratch attempts were not isolated correctly and are not used as evidence.
 
 ## CI evidence boundary
 
-The latest verified successful implementation CI run is https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346 at commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: API RSpec passed, Web Vitest and production build passed, and the API job's migration rollback/re-apply step passed. This run includes the cross-tenant-vacancy regression spec and the fix for `DoubleRenderError`. An older successful run is https://github.com/aldxynnn/ai-interview-platform/actions/runs/40256979092 (16 RSpec examples, 0 failures), but the newer run is the relevant current evidence.
+Latest verified implementation CI run with same-tenant positive-control and scheduling tests: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781 at commit `5a0b0dd488013d52f7623860a83b703db931bda5`. Result: 19 RSpec examples, 0 failures; Web Vitest and production build passed; migration rollback/re-apply passed. The docs-only final report update then triggered another CI run, which should be checked before presenting the exact branch HEAD as fully green.
 
-Browser E2E/responsive review, live Gemini integration, and a full local setup run remain unverified in this environment.
+Browser E2E/responsive review, actual UI screenshots, live Gemini integration, and full clean local setup remain unverified in this environment.
