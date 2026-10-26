@@ -23,7 +23,7 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 | P1 | Kegagalan lookup invitation dapat tampak seperti interview selesai | Pisahkan completion dari error dan sediakan retry. |
 | P2 | Skill matching/evidence AI dapat ambigu | Bedakan `not_assessed` dari gap; gunakan skill ID stabil dan validasi kutipan transcript. |
 | P2 | Portfolio generation dapat berisiko partial write/override hilang | Validasi sebelum write, transaksi, pertahankan override assessor. |
-| P2/P3 | Setup docs dan aksesibilitas/responsive belum seluruhnya terbukti | README/path/port diperbaiki; browser review masih dibutuhkan. |
+| P3 | Setup docs, responsive, dan aksesibilitas belum diverifikasi secara visual | README/path/port diperbaiki; browser review keyboard/focus/contrast dan screenshot aktual masih dibutuhkan. |
 
 ## 3. Alternatif dan keputusan
 
