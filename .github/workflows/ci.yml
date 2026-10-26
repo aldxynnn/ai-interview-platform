@@ -53,6 +53,7 @@ jobs:
         with:
           ruby-version: '3.3.2'
           bundler-cache: true
+          working-directory: api
       - name: Apply database migrations
         run: bundle exec rails db:migrate
       - name: Run RSpec
