@@ -1,10 +1,10 @@
 # Rakamin Take-home — Product Impact & Fit/Gap Reliability
 
 Tanggal: 26 Oktober 2026  
-Branch final untuk PR: `take-home/fitgap-reliability-final`  
+Branch kerja utama untuk PR: `take-home/trustworthy-fitgap-20261026`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
-> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI branch implementasi terbaru lulus pada run 40261724286. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
+> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI branch PR-ready lulus pada run 40264619423: 22 RSpec examples / 0 failures, Web Vitest + production build pass, migration rollback/re-apply pass. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
 
 ## 1. Produk dan pengguna
 
@@ -16,13 +16,14 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 
 | Prioritas | Temuan | Dampak / solusi |
 |---|---|---|
+| P0 | Tidak ada P0 yang terkonfirmasi dari audit code-only; production runtime tidak diuji. | Bukan klaim bahwa risiko kritis mustahil ada; verifikasi runtime/deployment tetap diperlukan. |
 | P1 | Risiko akses lintas tenant pada portfolio/skill/report dan lookup vacancy | Resource harus di-scope ke tenant aktif; request tenant asing harus ditolak tanpa side effect. |
 | P1 | Kontrak Fit/Gap API/UI tidak konsisten (`expected_level` vs `required_level`, override flag) | Selaraskan payload dan tipe agar perbandingan tidak salah atau ambigu. |
 | P1 | Lifecycle report/polling dan worker rentan duplikasi atau hasil lama | Status, fingerprint, lease token, error handling, pertahankan report terakhir. |
 | P1 | Kegagalan lookup invitation dapat tampak seperti interview selesai | Pisahkan completion dari error dan sediakan retry. |
 | P2 | Skill matching/evidence AI dapat ambigu | Bedakan `not_assessed` dari gap; gunakan skill ID stabil dan validasi kutipan transcript. |
 | P2 | Portfolio generation dapat berisiko partial write/override hilang | Validasi sebelum write, transaksi, pertahankan override assessor. |
-| P2/P3 | Setup docs dan aksesibilitas/responsive belum seluruhnya terbukti | README/path/port diperbaiki; browser review masih dibutuhkan. |
+| P3 | Setup docs, responsive, dan aksesibilitas belum diverifikasi secara visual | README/path/port diperbaiki; browser review keyboard/focus/contrast dan screenshot aktual masih dibutuhkan. |
 
 ## 3. Alternatif dan keputusan
 
@@ -36,13 +37,14 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 - Kontrak Fit/Gap diselaraskan; `not_assessed` dibedakan dari gap.
 - Report scheduler/worker menggunakan status, fingerprint, lease token, dan guard idempotensi.
 - Portfolio generator memvalidasi respons dan menggunakan transaksi sambil menjaga override assessor.
+- Error provider saat generation disimpan dan dilog sebagai pesan generik; detail response provider tidak ditulis ke log atau status error.
 - Interview page menampilkan error invitation dan retry, bukan completion palsu.
 - Vitest/component test, RSpec request/service specs, CI workflow, perbaikan README port/path.
 - Tambahan regression spec untuk mencegah tenant A menjadwalkan Fit/Gap dengan vacancy tenant B.
 
 ## 5. Hasil pengujian
 
-CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch HEAD implementasi terbaru lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286.
+CI code/test pada commit `5a0b0dd488013d52f7623860a83b703db931bda5` melaporkan 19 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch implementasi sebelumnya lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286. CI pada snapshot implementasi dengan privacy regression tests (22 RSpec examples / 0 failures, Vitest + production build lulus, migration rollback/re-apply lulus): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264619423. Snapshot tersebut kemudian dipindahkan ke branch kerja utama ini; CI branch kerja utama perlu diverifikasi pada run setelah integrasi.
 
 Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
 
@@ -67,13 +69,13 @@ Percobaan valid dijalankan pada branch terpisah `scratch/seeded-fault-unscoped-2
 Percobaan scratch sebelumnya tidak terisolasi dengan benar dan tidak dipakai sebagai bukti. Percobaan yang dicantumkan di atas adalah bukti fault/recovery yang valid; fault hanya berada di scratch branch, bukan branch implementasi.
 ## 8. Privasi, UU PDP, dan risiko tersisa
 
-Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/dasar pemrosesan, pemberitahuan kandidat, minimisasi, retensi/penghapusan, kontrol akses, transmisi ke penyedia AI, penerima data, dan kewajiban UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Ini daftar risiko untuk ditinjau, bukan kesimpulan legal atau klaim pelanggaran.
+Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat response body atau fragmen transcript. Portfolio generation menyimpan error generik, dan Gemini HTTP client tidak mencatat atau menempelkan raw response body pada exception. Sebelum produksi, review tujuan/dasar pemrosesan, pemberitahuan kandidat, minimisasi, retensi/penghapusan, kontrol akses, transmisi ke penyedia AI, penerima data, dan kewajiban UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Ini daftar risiko untuk ditinjau, bukan kesimpulan legal atau klaim pelanggaran.
 
 ## 9. Submission dan tindak lanjut
 
-- Branch: https://github.com/aldxynnn/ai-interview-platform/tree/take-home/trustworthy-fitgap-20261026
-- CI branch implementasi HEAD (API RSpec + Web Vitest/build + migration rollback/re-apply) lulus: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286
-- PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch final yang disiapkan untuk PR: `take-home/fitgap-reliability-final`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
+- Branch final (berbasis upstream base, dengan implementation snapshot dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/take-home/trustworthy-fitgap-20261026
+- CI source branch untuk code snapshot lulus (22 RSpec examples, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296
+- PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch final yang disiapkan untuk PR: `take-home/trustworthy-fitgap-20261026`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
 - Local setup: ikuti `api/README.md` dan `web/README.md`; belum diverifikasi dari clone bersih.
@@ -82,5 +84,5 @@ Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/
 
 1. Jalankan browser smoke test desktop/mobile, periksa console/network, keyboard/focus, empty/error/long-text states; ambil screenshot aktual.
 2. Verifikasi local setup dari clone bersih dan failure path Gemini dengan stub; live integration jika kredensial tersedia.
-3. Buat PR dari branch final `take-home/fitgap-reliability-final` ke upstream `main`; integrasi create PR ditolak HTTP 403.
+3. Buat PR dari branch final `take-home/trustworthy-fitgap-20261026` ke upstream `main`; integrasi create PR ditolak HTTP 403.
 4. Rekam dan host video walkthrough 3–5 menit; tambahkan link video pada PR/submission.
