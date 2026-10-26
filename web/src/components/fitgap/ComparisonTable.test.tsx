@@ -72,6 +72,6 @@ describe("ComparisonTable", () => {
     expect(screen.getByText("Gap")).toBeTruthy();
     expect(screen.getByText("Exceeds")).toBeTruthy();
     expect(screen.getByText("Not assessed")).toBeTruthy();
-    expect(screen.getByText("0")).toBeTruthy();
+    expect(screen.getAllByText("1")).toHaveLength(4);
   });
 });
