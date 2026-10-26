@@ -30,15 +30,16 @@ class FitGapGeneratorWorker
   end
 
   def perform(portfolio_id, vacancy_id, lease_token = nil)
-    # Jobs from an older deployment did not carry a lease token. Ignore them;
-    # the next request will schedule the report through the current lifecycle.
-    unless lease_token.is_a?(String) && lease_token.present?
-      Rails.logger.warn("[N13] Skipping legacy fit/gap job without a lease token")
-      return
-    end
-
     portfolio = Portfolio.find(portfolio_id)
     vacancy = Vacancy.unscoped.find(vacancy_id)
+
+    # Jobs queued before the lifecycle migration do not carry a lease token.
+    # Hand them off to the current scheduler rather than silently dropping work.
+    unless lease_token.is_a?(String) && lease_token.present?
+      FitGap::ReportScheduler.enqueue(portfolio: portfolio, vacancy: vacancy, force: true)
+      Rails.logger.info("[N13] Rescheduled legacy fit/gap job through report lifecycle")
+      return
+    end
     report = FitGapReport.find_by!(portfolio_id: portfolio.id, vacancy_id: vacancy.id)
     claimed_at = Time.iso8601(lease_token).utc
     claimed = false
