@@ -176,14 +176,14 @@ export default function AssessmentInvitePage() {
   };
 
   const copyLink = (session: Session, id: number) => {
-    navigator.clipboard.writeText(session.invite_url);
+    navigator.clipboard.writeText(`${window.location.origin}/interview/${session.invite_token}`);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const copyNewSessionLink = () => {
     if (!newSession?.invite_url) return;
-    navigator.clipboard.writeText(newSession.invite_url);
+    navigator.clipboard.writeText(`${window.location.origin}/interview/${newSession.invite_token}`);
     setNewSessionCopied(true);
     setTimeout(() => setNewSessionCopied(false), 2000);
   };
@@ -262,7 +262,7 @@ export default function AssessmentInvitePage() {
             </p>
             <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-white">
               <span className="flex-1 text-sm font-mono truncate text-muted-foreground">
-                {newSession.invite_url}
+                {`${window.location.origin}/interview/${newSession.invite_token}`}
               </span>
             </div>
             <Button variant="outline" size="sm" onClick={copyNewSessionLink} className="w-full">
