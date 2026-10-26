@@ -6,7 +6,7 @@
 
 Repository: `rakamindev/ai-interview-platform` (working fork: `aldxynnn/ai-interview-platform`).
 
-The brief describes a Rails 7 API backed by PostgreSQL and Sidekiq, plus a React 18 + TypeScript + Vite web application. The API has RSpec dependencies but the brief states there were no specs; the web package has a build script but no test runner. This branch adds a small RSpec baseline and model specs; a frontend test runner is still not configured.
+The brief describes a Rails 7 API backed by PostgreSQL and Sidekiq, plus a React 18 + TypeScript + Vite web application. The API has RSpec dependencies but the brief states there were no specs; the web package has a build script but no test runner. This branch adds a small RSpec baseline, model specs, and a controller spec for invalid export context; a frontend test runner is still not configured.
 
 The selected slice is the assessor's portfolio results and export workflow. It is decision support, not a cosmetic page: a silent request failure can be mistaken for absent candidate evidence, while a failed or misleading export can interrupt review.
 
@@ -86,7 +86,7 @@ Before shipping to production, verify tenant isolation for every portfolio, vaca
 - `web/src/pages/portfolio/PortfolioPage.tsx`: visible load-error alert with retry/back navigation; visible export-error feedback; empty states for no configured skills and no vacancies; fit/gap controls adapt to narrow widths.
 - `api/app/controllers/api/v1/portfolios_controller.rb`: when an export explicitly requests a vacancy, an unknown vacancy now returns 404 instead of silently continuing without that context.
 - `api/spec/spec_helper.rb` and `api/spec/rails_helper.rb`: initial RSpec configuration.
-- `api/spec/models/portfolio_skill_spec.rb`: coverage for allowed rating, out-of-range ratings, unsupported confidence, and evidence normalization.
+- `api/spec/models/portfolio_skill_spec.rb`: coverage for allowed rating, out-of-range ratings, unsupported confidence, and evidence normalization. `api/spec/controllers/api/v1/portfolios_controller_spec.rb`: verifies the unknown-vacancy export guard.
 
 ### AI verification moment
 
