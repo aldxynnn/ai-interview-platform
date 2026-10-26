@@ -71,9 +71,11 @@ Opsi A paling sesuai karena mengutamakan correctness dan perlindungan kandidat, 
 
 ## 6. Bukti pengujian otomatis
 
-**CI terbaru pada branch implementasi:** [GitHub Actions run 40270782340](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40270782340) — lulus untuk kedua job:
-- API — RSpec
-- Web — Vitest dan production build
+**CI pada snapshot kode branch sebelum pembaruan dokumentasi ini:** [GitHub Actions run 40271673290](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40271673290) — kedua job berstatus sukses:
+- API — RSpec, termasuk migrasi dan pemeriksaan rollback/re-apply.
+- Web — Vitest dan production build.
+
+Pembaruan setelah run tersebut hanya menyentuh dokumentasi laporan. Jalankan/cek ulang CI setelah commit dokumentasi terakhir sebelum menganggap status check pada HEAD PR sudah hijau.
 
 **CI privacy regression snapshot:** [run 40264619423](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264619423) — 22 RSpec examples, 0 failures; Vitest, production build, dan migration rollback/re-apply lulus.
 
