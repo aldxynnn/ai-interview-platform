@@ -150,7 +150,7 @@ module Api
       def find_vacancy!(id)
         return json_error("vacancy_id is required", :unprocessable_entity) if id.blank?
 
-        Vacancy.find_by(id: id, tenant_id: current_tenant_id) || json_error("Vacancy not found", :not_found)
+        Vacancy.find_by(id: id) || json_error("Vacancy not found", :not_found)
       end
 
       def portfolio_json(portfolio)
