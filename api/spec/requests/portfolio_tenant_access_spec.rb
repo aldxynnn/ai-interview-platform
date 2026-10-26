@@ -41,6 +41,20 @@ RSpec.describe "Portfolio tenant access", type: :request do
     @headers = { "Authorization" => "Bearer #{@token_a}" }
   end
 
+  it "can read a same-tenant Fit/Gap report (tenant context positive control)" do
+    report = FitGapReport.create!(
+      portfolio: @portfolio_a, vacancy: @vacancy_a,
+      generation_status: "complete", skill_comparisons: [],
+      overall_narrative: "Synthetic overall narrative",
+      culture_narrative: "Synthetic culture narrative"
+    )
+
+    get "/api/v1/portfolios/#{@portfolio_a.id}/fitgap/#{@vacancy_a.id}", headers: @headers
+
+    expect(response).to have_http_status(:ok)
+    expect(JSON.parse(response.body).dig("report", "id")).to eq(report.id)
+  end
+
   it "does not expose another tenant's portfolio report" do
     get "/api/v1/portfolios/#{@portfolio_b.id}/fitgap/#{@vacancy_a.id}", headers: @headers
 
