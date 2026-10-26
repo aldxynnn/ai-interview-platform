@@ -77,6 +77,16 @@ RSpec.describe "Portfolio tenant access", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "schedules a Fit/Gap report for a same-tenant vacancy" do
+    expect do
+      post "/api/v1/portfolios/#{@portfolio_a.id}/fitgap",
+           headers: @headers,
+           params: { vacancy_id: @vacancy_a.id }
+    end.to change(FitGapReport, :count).by(1)
+
+    expect(response).to have_http_status(:accepted)
+  end
+
   it "does not schedule a fit-gap report using another tenant's vacancy" do
     expect do
       post "/api/v1/portfolios/#{@portfolio_a.id}/fitgap",
