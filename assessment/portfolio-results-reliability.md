@@ -1,72 +1,115 @@
-# Assessment Report — Portfolio Results Reliability
+# Fullstack Product Engineer Case Study — Portfolio Decision Reliability
 
-> Status: implementation notes and verification record. Update the evidence section after running the app and tests locally; do not present unrun checks as passing.
+> Evidence status: code and analysis are committed to the assessment branch. Build, automated tests, browser checks, screenshots, and the demo video have **not** been run/captured from this environment. Do not interpret planned checks as passing.
 
-## Step 1 — Product problem and prioritization
+## Step 1 — Setup and local exploration
 
-### Problem observed in code
-In `web/src/pages/portfolio/PortfolioPage.tsx`, the initial `Promise.all(...)` catches every failure with an empty handler. If the portfolio, vacancy list, or session request fails, the page stops loading but gives the user no explanation or recovery action. The portfolio screen can appear blank or incomplete, leaving an assessor unsure whether the candidate has no results or the request failed.
+Repository: `rakamindev/ai-interview-platform` (working fork: `aldxynnn/ai-interview-platform`).
 
-### Priority
-- **P1 — user-facing reliability:** failed data loading is silently swallowed on a decision-support screen.
-- **P2 — export feedback:** export requests have a loading state, but errors are not surfaced to the user.
-- Scope for this change: clear load failure state with an explicit retry action, while preserving the existing portfolio workflow.
+The brief describes a Rails 7 API backed by PostgreSQL and Sidekiq, plus a React 18 + TypeScript + Vite web application. The API has RSpec dependencies but the brief states there were no specs; the web package has a build script but no test runner. This branch adds a small RSpec baseline and model specs; a frontend test runner is still not configured.
 
-### People affected
-Assessors reviewing candidate evidence and deciding whether to run a fit/gap analysis. Silent failures waste time and can be mistaken for missing candidate data.
+The selected slice is the assessor's portfolio results and export workflow. It is decision support, not a cosmetic page: a silent request failure can be mistaken for absent candidate evidence, while a failed or misleading export can interrupt review.
 
-## Step 2 — Acceptance criteria and options
+## Step 2 — Product and domain context
 
-### Acceptance criteria
-1. Loading continues to use skeleton placeholders.
-2. When initial required data fails, show a concise, accessible error message rather than an empty results area.
-3. Give the assessor a retry action that re-runs the initial data requests.
-4. Retry does not leave the page stuck in loading after another failure.
-5. Successful loads continue to show the existing portfolio, discovered skills, transcript link, exports, and fit/gap action.
-6. Do not show a success claim for data that has not loaded.
+### Users and affected people
+
+- **Assessors/recruiters/hiring managers:** need clear evidence, a reliable skill summary, and a dependable path from portfolio review to vacancy fit/gap analysis.
+- **Candidates:** are evaluated by a system they do not choose. An absent result must not be silently presented as an empty assessment, and AI-derived levels must remain distinguishable from assessor overrides.
+- **Data protection:** portfolio screens may expose candidate names, interview transcript excerpts, competency summaries, and inferred skill ratings. Under Indonesia's UU PDP context, avoid logging candidate content or raw model output unnecessarily, restrict access to authorized assessors, and make the source/uncertainty of AI-derived claims legible. This branch does not claim to have completed a legal compliance audit.
+
+### Product principle
+
+The highest-value near-term improvement is to make decision-critical failure states explicit and recoverable without implying that missing data means a candidate lacks a skill. AI-generated assessment should be treated as evidence-assisted judgement, not ground truth.
+
+## Step 3 — Problem and gap analysis
+
+Severity describes user/product impact for the observed code path, not a claim that every issue is confirmed in production.
+
+| Priority | Finding | Classification | Workflow / candidate impact |
+|---|---|---|---|
+| P1 | Initial portfolio, vacancy, or session request failures were swallowed by an empty catch. | Defective implementation | An assessor could mistake a failed load for missing candidate evidence and make a decision from an incomplete screen. |
+| P1 | Portfolio export errors had no user-facing recovery state. | Defective implementation | The user could click PDF/JSON and receive no useful explanation when the request failed. |
+| P1 — investigation required | Portfolio and fit/gap controller lookups need an explicit tenant-boundary audit across session, portfolio, vacancy, and cached report. | Constraint/security signal; not asserted as a proven exploit | Cross-tenant exposure of candidate evidence would be high impact under UU PDP. The current branch does not claim this audit is complete. |
+| P2 | The screen did not explicitly explain the case where there are no configured skills or no vacancies. | Defective UI state | An empty section can look broken; a missing vacancy list can make fit/gap unavailable without explaining why. |
+| P2 | API export accepted a supplied vacancy ID that did not resolve and could silently proceed without that vacancy context. | Defective implementation | A user can receive an export that does not match the requested comparison context. |
+| P2 | Long evidence quotes and long competency summaries need visual stress testing and truncation/expansion decisions. | Missing specification | Dense evidence can overwhelm review and make it harder to distinguish claims from supporting quotes. |
+| P2 | Partial loading policy is not specified: current page fetch uses `Promise.all`, so one optional dependency can fail the whole page. | Missing specification / architectural constraint | A vacancy service outage can hide an otherwise available portfolio. |
+| P3 | No web test runner exists in `web/package.json`; API RSpec dependencies exist but the brief says no specs were written. | Missing engineering harness | Regressions are difficult to prove automatically and CI cannot protect the flow yet. |
+
+### Constraint signal to escalate
+
+Before shipping to production, verify tenant isolation for every portfolio, vacancy, fit/gap, and export lookup; define which endpoints can access candidate data; and confirm the session's tenant matches the vacancy's tenant. Also agree whether vacancies are required to render the portfolio or should fail independently. These are higher-risk decisions than a visual polish pass.
+
+## Step 4 — Revamp strategy, acceptance criteria, and trade-offs
 
 ### Options considered
-1. **Keep silent catch:** smallest change, but leaves the user unable to diagnose or recover. Rejected.
-2. **Add a visible error and retry around the initial load:** directly addresses the user-facing failure with limited code and no API contract changes. Selected.
-3. **Redesign portfolio loading into independent partial panels:** better resilience when only one endpoint fails, but expands state complexity and is a larger change than the immediate case-study scope.
 
-### Trade-off
-The selected approach treats the initial requests as one required page load, consistent with the current `Promise.all` implementation. It does not yet support partial rendering when one dependency fails.
+**Option A — Patch the current page and export contract (selected for this slice).**
+- Product impact: makes failure and empty states explicit, adds retry/recovery affordances, and rejects invalid export context.
+- Cost: small and reversible; preserves existing API payloads and UI architecture.
+- Maintainability: low migration burden; current team can maintain it in the existing controller/page.
+- Failure modes: initial fetch still uses all-or-nothing `Promise.all`; backend model generation, timeout handling, tenant audit, and async-job idempotency are not comprehensively covered.
 
-## Step 3 — Implementation and engineering considerations
+**Option B — Load independent panels with separate states.**
+- Product impact: portfolio evidence can remain visible when vacancies fail; users can still inspect the candidate.
+- Cost: medium; requires independent loading/error states and a clearer dependency policy.
+- Maintainability: more state to manage, but better isolation of optional services.
+- Failure modes: inconsistent refresh timing and stale panel data if invalidation rules are not defined.
 
-- Frontend state should distinguish loading, loaded, and failed instead of silently treating failure as an empty result.
-- Retry should use the same fetch path as the initial load to avoid divergent behavior.
-- Keep the existing API contract and data model unchanged for this targeted fix; introducing a migration or backend change would not improve this specific failure mode.
-- Further hardening opportunities: expose export errors, independently load optional vacancy data, and add component tests once a test runner is configured.
+**Option C — Rework portfolio/fit-gap API contracts and async generation lifecycle.**
+- Product impact: strongest long-term reliability, with explicit statuses, idempotent job enqueueing, tenant-scoped queries, and typed partial results.
+- Cost: high; touches API, workers, data model, migrations, frontend, and tests.
+- Maintainability: best if designed consistently, but broadest change and highest deadline risk.
+- Failure modes: migration/rollback hazards, job duplication, compatibility breakage, and retry storms if idempotency is not designed first.
 
-## Step 4 — Verification plan
+**Decision:** ship Option A as a narrow, reversible reliability slice now; record Option B and C as follow-up architecture work. Do not present this slice as a complete production hardening.
 
-Run from `web/`:
-```bash
-npm ci
-npm run build
-```
+### Self-defined acceptance criteria
 
-Manual checks:
-1. Load a session with a completed portfolio: existing results render.
-2. Make the portfolio endpoint fail: an error and retry action appear.
-3. Retry with the API still unavailable: the error remains visible and the page is not stuck on skeletons.
-4. Restore the API and retry: the results render.
-5. Test at narrow mobile width and desktop width.
-6. Test export success and failure separately.
+1. While required initial data is loading, show skeletons; on failure, show a visible alert and a retry action.
+2. Retry must run the same request path and return to a visible error state if the retry also fails.
+3. Successful load must preserve the existing portfolio, discovered skills, transcript navigation, exports, and fit/gap action.
+4. Export failure must produce a visible, non-sensitive error; the user can retry without reloading the page.
+5. An empty configured-skill collection must say no configured skills were assessed; an empty vacancy collection must explain that a vacancy is needed for fit/gap.
+6. A supplied unknown vacancy ID on export must return a not-found response rather than silently exporting without vacancy context.
+7. AI levels remain constrained to the 1–5 scale; unsupported confidence values are rejected; absent evidence normalizes to an empty list rather than crashing presentation.
+8. Model/provider failures must never be described as a successful assessment. The user should see a failed/pending state, not invented evidence. (The full model timeout/retry lifecycle is not implemented by this slice.)
+9. Long text must remain readable on narrow screens and must not overflow the viewport. This needs manual visual verification before submission.
+10. No real candidate data, credentials, or raw AI responses should be added to logs, screenshots, commits, or the report.
+11. Tests must demonstrate invalid ratings/confidence are rejected and evidence normalization is stable. A seeded fault must be introduced on a scratch branch, observed to fail, then reverted with history retained before claiming that requirement is complete.
 
-### Evidence record
-- Automated build: **not run in this environment**.
-- Browser/manual checks: **not run in this environment**.
-- Screenshot/video/CI links: **add after capturing real evidence**.
-- AI output verification: the initial code review identified the empty catch in the actual source file. Verify the final implementation against the acceptance criteria and run the commands above before submission.
+## Step 5 — Implementation and verification
 
-## Step 5 — Release and submission checklist
+### Implemented in this branch
 
-- [ ] Review the branch diff and explain each changed state/callback.
-- [ ] Run `npm ci && npm run build` from `web/`.
-- [ ] Capture before/after screenshots using real application data.
-- [ ] Record a 3–5 minute demo showing normal flow and failed-load recovery.
-- [ ] Add the final pull request URL after opening the PR.
-- [ ] Replace every “not run” evidence item with actual results; never claim unexecuted tests passed.
+- `web/src/pages/portfolio/PortfolioPage.tsx`: visible load-error alert with retry/back navigation; visible export-error feedback; empty states for no configured skills and no vacancies; fit/gap controls adapt to narrow widths.
+- `api/app/controllers/api/v1/portfolios_controller.rb`: when an export explicitly requests a vacancy, an unknown vacancy now returns 404 instead of silently continuing without that context.
+- `api/spec/spec_helper.rb` and `api/spec/rails_helper.rb`: initial RSpec configuration.
+- `api/spec/models/portfolio_skill_spec.rb`: coverage for allowed rating, out-of-range ratings, unsupported confidence, and evidence normalization.
+
+### AI verification moment
+
+A generated code change must be treated as a proposal, not proof. During source review, the relevant page's empty `catch` was confirmed in the repository and was the reason for the load-error state. The API export change was then checked against the controller's actual format validation and the `Vacancy` model's tenant-scoping concern; however, the full tenant-boundary behavior still requires an integration test. The tests added here are not claimed to have passed because they have not been run in this environment.
+
+### Evidence checklist — complete these before submission
+
+- [ ] Run API specs: from `api/`, `bundle exec rspec`.
+- [ ] Run web production build: from `web/`, `npm ci && npm run build`.
+- [ ] If the Rails test database is not prepared, follow the API README environment/database setup first; do not hide setup failures.
+- [ ] Manually verify successful portfolio, failed initial load, repeated retry failure, retry recovery, export success/failure, no configured skills, no vacancies, generation failure, long text, and mobile/desktop widths.
+- [ ] Perform seeded fault test on a scratch branch: deliberately break a covered validation/behavior, run the relevant test and observe failure, then revert the fault while preserving visible history. Do not weaken assertions.
+- [ ] Capture real screenshots of normal, loading, error, empty, and responsive states with synthetic/non-sensitive data.
+- [ ] Record a 3–5 minute demo covering the user problem, normal workflow, failure/recovery, and trade-off.
+- [ ] Audit tenant authorization and all model/provider timeout/partial-write/duplicate-job paths before claiming those risks are resolved.
+- [ ] Link the pull request against the employer's upstream repository if repository permissions allow. The working fork PR is not itself proof that an upstream PR exists.
+
+## Pull request and artifacts
+
+- Working fork PR: https://github.com/aldxynnn/ai-interview-platform/pull/6
+- Assessment branch: `assessment/portfolio-ux-hardening`
+- Source repository named in the brief: https://github.com/rakamindev/ai-interview-platform
+
+## Final status
+
+This is a targeted reliability improvement across the frontend and API, with an initial API model-test harness. It is **not yet a complete response to every baseline requirement**: test/build results, seeded-fault evidence, browser screenshots, video, tenant-boundary integration tests, and full model/provider/worker failure-path hardening remain outstanding. Never claim those items as completed until there is real evidence.
