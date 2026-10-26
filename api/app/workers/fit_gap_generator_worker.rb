@@ -36,7 +36,7 @@ class FitGapGeneratorWorker
     # Jobs queued before the lifecycle migration do not carry a lease token.
     # Hand them off to the current scheduler rather than silently dropping work.
     unless lease_token.is_a?(String) && lease_token.present?
-      FitGap::ReportScheduler.enqueue(portfolio: portfolio, vacancy: vacancy, force: true)
+      FitGap::ReportScheduler.enqueue(portfolio: portfolio, vacancy: vacancy)
       Rails.logger.info("[N13] Rescheduled legacy fit/gap job through report lifecycle")
       return
     end
@@ -45,7 +45,7 @@ class FitGapGeneratorWorker
     claimed = false
 
     unless portfolio.session.tenant_id == vacancy.tenant_id
-      fail_current_lease(report, lease_token, "Report inputs are not available")
+      fail_current_lease(report, lease_token, "Report inputs are not available", retryable: false)
       Rails.logger.warn("[N13] Refused cross-tenant report generation")
       return
     end
@@ -75,12 +75,12 @@ class FitGapGeneratorWorker
 
   private
 
-  def fail_current_lease(report, lease_token, message)
+  def fail_current_lease(report, lease_token, message, retryable: true)
     report.with_lock do
       current = report.generation_started_at&.utc&.iso8601(6)
       if current == lease_token && report.generation_status != "complete"
         # Re-queue under the same lease so Sidekiq's retry can safely claim it.
-        report.update!(generation_status: "queued", generation_error: message)
+        report.update!(generation_status: retryable ? "queued" : "failed", generation_error: message, generation_started_at: retryable ? report.generation_started_at : nil)
       end
     end
   rescue StandardError => e
