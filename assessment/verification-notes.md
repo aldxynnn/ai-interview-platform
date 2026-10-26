@@ -4,7 +4,7 @@ Date: 2026-10-26
 
 ## AI Verification Moment (real defect, corrected)
 
-CI initially caught an error-handling defect in `Api::V1::PortfoliosController#find_vacancy!`: when a vacancy lookup failed, the helper rendered an error but returned a truthy render result. The calling action then continued and could render again, causing `AbstractController::DoubleRenderError`. The helper was changed to render the error and explicitly return `nil`. A same-tenant GET positive control and same-tenant POST scheduling test were added. The implementation CI subsequently passed with 19 RSpec examples and 0 failures.
+CI initially caught an error-handling defect in `Api::V1::PortfoliosController#find_vacancy!`: when a vacancy lookup failed, the helper rendered an error but returned a truthy render result. The calling action then continued and could render again, causing `AbstractController::DoubleRenderError`. The helper was changed to render the error and explicitly return `nil`. A same-tenant GET positive control and same-tenant POST scheduling test were added. The implementation CI subsequently passed with 22 RSpec examples and 0 failures.
 
 A separate review concern was the query's missing explicit `tenant_id`. The `Vacancy` model includes `TenantScoped`, whose default scope also filters by `Current.tenant_id`; therefore the earlier `Vacancy.find_by(id: id)` line alone was not proof of an actual tenant-scope bypass. The implementation now includes the explicit tenant condition as defense-in-depth. To make the seeded fault meaningful, the experiment uses `Vacancy.unscoped.find_by(id: id)` to deliberately bypass the default scope.
 
@@ -20,8 +20,12 @@ Valid isolated experiment branch: `scratch/seeded-fault-unscoped-20261026`, base
 
 Earlier scratch attempts were not isolated correctly and are not used as evidence.
 
+## Privacy verification update
+
+Portfolio generation and exhausted Sidekiq retries persist generic failure messages and log only the exception class. Gemini HTTP errors no longer log or attach raw response bodies to exceptions. Regression specs assert provider exception details are not exposed through stored error state, application logs, or HTTP client error objects.
+
 ## CI evidence boundary
 
-Latest verified implementation CI run with same-tenant positive-control and scheduling tests: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781 at commit `5a0b0dd488013d52f7623860a83b703db931bda5`. Result: 19 RSpec examples, 0 failures; Web Vitest and production build passed; migration rollback/re-apply passed. The latest implementation-branch HEAD CI run is green: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286 (API RSpec and Web Vitest/production build jobs both succeeded).
+Privacy-hardening implementation snapshot CI: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264619423. Result: 22 RSpec examples, 0 failures; Web Vitest and production build passed; migration rollback/re-apply passed. The changes have now been ported to the original working branch; its post-integration CI must be checked separately.
 
-Browser E2E/responsive review, actual UI screenshots, live Gemini integration, and full clean local setup remain unverified in this environment. Creating an upstream PR via the GitHub integration was attempted but rejected with HTTP 403 (Resource not accessible by integration); no PR has been created. A clean final branch is being prepared for manual PR creation if integration access remains unavailable.
+Browser E2E/responsive review, actual UI screenshots, live Gemini integration, and full clean local setup remain unverified in this environment. The PR-ready branch `take-home/trustworthy-fitgap-20261026` is based directly on verified upstream base b836d02f45c6300b238b98ad50e66ead706723b6, with an implementation snapshot and a follow-up privacy hardening commit; no force push or merge was performed. Creating an upstream PR through the GitHub integration was rejected with HTTP 403 (Resource not accessible by integration); no PR has been created. Use GitHub's compare page to open it manually if needed.
