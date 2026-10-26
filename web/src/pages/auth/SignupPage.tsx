@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Sparkles,
+  Loader2,
+  Lock,
+  Mail,
+  ShieldCheck,
+  AlertCircle,
+  UserCheck,
+} from "lucide-react";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -29,77 +38,157 @@ export default function SignupPage() {
       setAuth({ token });
       navigate("/assessments");
     } catch {
-      setError("Signup failed. Please try again.");
+      setError("Registration failed. Please verify your details or use a different email.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">AI Interview</h1>
-          <p className="text-sm text-muted-foreground mt-1">Create an account</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 via-white to-sky-50/40 p-4 sm:p-6">
+      <div className="w-full max-w-md space-y-6">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white shadow-md shadow-sky-600/20">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Rakamin AI Interview
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+              Create an Assessor or Workspace Admin Account
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+        {/* Card */}
+        <Card className="border-slate-200/90 shadow-sm bg-white/95 backdrop-blur-xs">
+          <CardContent className="p-6 sm:p-7 space-y-5">
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-slate-900">Register Account</h2>
+              <p className="text-xs text-slate-500">
+                Join your tenant to evaluate candidates and review AI-generated portfolios.
+              </p>
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Role</Label>
-            <RadioGroup
-              value={role}
-              onValueChange={(v) => setRole(v as "admin" | "user")}
-              className="flex gap-4"
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="user" id="role-user" />
-                <Label htmlFor="role-user" className="font-normal cursor-pointer">User</Label>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
+                  Work Email
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="pl-10 text-xs bg-white border-slate-200 shadow-2xs"
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="admin" id="role-admin" />
-                <Label htmlFor="role-admin" className="font-normal cursor-pointer">Admin</Label>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Minimum 8 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pl-10 text-xs bg-white border-slate-200 shadow-2xs"
+                  />
+                </div>
               </div>
-            </RadioGroup>
-          </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+              <div className="space-y-2 pt-1">
+                <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5 text-sky-600" />
+                  <span>Workspace Role</span>
+                </Label>
+                <RadioGroup
+                  value={role}
+                  onValueChange={(v) => setRole(v as "admin" | "user")}
+                  className="grid grid-cols-2 gap-2.5"
+                >
+                  <label
+                    htmlFor="role-user"
+                    className={`flex items-center gap-2.5 rounded-lg border p-3 cursor-pointer text-xs transition-all ${
+                      role === "user"
+                        ? "border-sky-500 bg-sky-50/70 text-sky-950 font-medium"
+                        : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <RadioGroupItem value="user" id="role-user" className="border-sky-500 text-sky-600" />
+                    <div>
+                      <p className="font-semibold text-slate-900">Assessor</p>
+                      <p className="text-2xs text-slate-500">Conducts assessments</p>
+                    </div>
+                  </label>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Sign up
-          </Button>
-        </form>
+                  <label
+                    htmlFor="role-admin"
+                    className={`flex items-center gap-2.5 rounded-lg border p-3 cursor-pointer text-xs transition-all ${
+                      role === "admin"
+                        ? "border-sky-500 bg-sky-50/70 text-sky-950 font-medium"
+                        : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <RadioGroupItem value="admin" id="role-admin" className="border-sky-500 text-sky-600" />
+                    <div>
+                      <p className="font-semibold text-slate-900">Admin</p>
+                      <p className="text-2xs text-slate-500">Manage vacancies &amp; team</p>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
 
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link to="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
+              {error && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-xs text-rose-800 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full bg-sky-600 hover:bg-sky-700 text-white shadow-xs font-medium text-xs h-10 mt-2"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Account...
+                  </>
+                ) : (
+                  "Create Workspace Account"
+                )}
+              </Button>
+            </form>
+
+            <div className="pt-2 text-center text-xs text-slate-500 border-t border-slate-100">
+              Already have an account?{" "}
+              <Link to="/login" className="font-semibold text-sky-600 hover:text-sky-700 transition-colors">
+                Sign in here
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <div className="flex items-center justify-center gap-1.5 text-2xs text-slate-400">
+          <ShieldCheck className="h-3.5 w-3.5 text-sky-600" />
+          <span>UU PDP No. 27/2022 Compliant &amp; Multi-Tenant Isolated</span>
+        </div>
       </div>
     </div>
   );
