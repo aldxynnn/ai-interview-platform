@@ -28,7 +28,7 @@ Constraint signal: the repository does not expose a runnable local environment t
 ### Acceptance criteria
 - AI levels `L1`..`L5` and integer overrides map to numeric levels 1..5.
 - Missing/invalid candidate or requirement levels produce `not_assessed`, never a fabricated gap or arithmetic exception.
-- API response uses `expected_level` as stored internally but maps to the frontend contract key `required_level` (must be verified in final controller update).
+- API response uses `expected_level` as stored internally but maps to the frontend contract key `required_level` and preserves null values for unassessed requirements..
 - Override provenance is returned for the UI.
 - Invalid/empty AI narrative falls back to an evidence-count summary.
 - No automated hire/reject recommendation is produced.
@@ -38,13 +38,13 @@ Constraint signal: the repository does not expose a runnable local environment t
 ## Step 5 — Implementation and proof status
 - Backend computation now normalizes level types before comparison, flags override provenance, guards malformed model output, and constrains narrative prompts to evidence-based summaries.
 - Frontend comparison table now includes explicit counts for match / above requirement / gap / not assessed, safe labels, empty-state copy, and a human-review disclaimer.
-- **Test status:** not yet executed. The GitHub connector can commit source but does not provide a local Ruby/PostgreSQL/Redis/Node runtime. Do not treat the code as verified until CI/local tests pass.
+- **Test status:** RSpec coverage for level normalization, invalid levels, overrides, and not-assessed behavior has been added but not executed in this environment. The GitHub connector can commit source but does not provide a local Ruby/PostgreSQL/Redis/Node runtime. Do not treat the code as verified until CI/local tests pass.
 - **Seeded fault test:** pending execution in a scratch branch; no pass/fail result is claimed.
 - **AI verification moment:** an initial AI-generated comparison assumption would have subtracted `"L3"` from an integer. Inspection of the model/controller types revealed the risk; the implementation now normalizes values before arithmetic. This is a code-review finding, not a claim that automated tests caught it.
 - **Screenshots/video:** pending browser runtime and recording. None are fabricated in this report.
 
 ## Step 6 — Submission checklist
-- PR: to be created after all changes and CI/test evidence are ready.
+- Draft PR: created against the fork's `main`; upstream contribution still requires a PR against `rakamindev/ai-interview-platform` if access/policy permits.
 - Visual screenshots: pending.
 - 3–5 minute walkthrough: outline: explain assessor workflow; show a generated report; demonstrate missing/invalid level and human override states; explain evidence limits and trade-offs.
 - Release gate: run API specs and frontend TypeScript/build checks; perform a seeded-fault mutation on a scratch branch and restore it; inspect mobile/responsive and model-failure states; then open PR.
