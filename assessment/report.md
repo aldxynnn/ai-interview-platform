@@ -4,7 +4,7 @@ Tanggal: 26 Oktober 2026
 Branch final untuk PR: `take-home/fitgap-reliability-final`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
-> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI pada HEAD branch final lulus pada run 40263681733. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
+> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI pada branch final lulus; verifikasi branch terbaru termasuk run 40263841424. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
 
 ## 1. Produk dan pengguna
 
@@ -71,8 +71,8 @@ Transcript wawancara dapat memuat data pribadi. Sebelum produksi, review tujuan/
 
 ## 9. Submission dan tindak lanjut
 
-- Branch final (satu commit di atas upstream base): https://github.com/aldxynnn/ai-interview-platform/tree/take-home/fitgap-reliability-final
-- CI pada HEAD branch final `701adc5a8bc55539e2bda99b69f04d6dbf8eff53` lulus (API RSpec, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40263681733
+- Branch final (berbasis upstream base, dengan implementation snapshot dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/take-home/fitgap-reliability-final
+- CI final branch lulus (API RSpec, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40263841424
 - PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch final yang disiapkan untuk PR: `take-home/fitgap-reliability-final`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
