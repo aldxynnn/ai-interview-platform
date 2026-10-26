@@ -17,7 +17,6 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 | Prioritas | Temuan | Dampak / solusi |
 |---|---|---|
 | P0 | Tidak ada P0 yang terkonfirmasi dari audit code-only; production runtime tidak diuji. | Bukan klaim bahwa risiko kritis mustahil ada; verifikasi runtime/deployment tetap diperlukan. |
-|---|---|---|
 | P1 | Risiko akses lintas tenant pada portfolio/skill/report dan lookup vacancy | Resource harus di-scope ke tenant aktif; request tenant asing harus ditolak tanpa side effect. |
 | P1 | Kontrak Fit/Gap API/UI tidak konsisten (`expected_level` vs `required_level`, override flag) | Selaraskan payload dan tipe agar perbandingan tidak salah atau ambigu. |
 | P1 | Lifecycle report/polling dan worker rentan duplikasi atau hasil lama | Status, fingerprint, lease token, error handling, pertahankan report terakhir. |
