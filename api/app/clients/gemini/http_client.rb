@@ -74,9 +74,9 @@ module Gemini
 
     def parse_response(response)
       unless response.success?
-        raise RateLimitError.new("Rate limited", status: response.status, body: response.body) if response.status == 429
-        Rails.logger.error("[Gemini::HttpClient] API error #{response.status}: #{response.body}")
-        raise ApiError.new("API returned #{response.status}", status: response.status, body: response.body)
+        raise RateLimitError.new("Rate limited", status: response.status) if response.status == 429
+        Rails.logger.error("[Gemini::HttpClient] API error #{response.status}")
+        raise ApiError.new("API returned #{response.status}", status: response.status)
       end
 
       data = JSON.parse(response.body)

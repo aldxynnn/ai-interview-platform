@@ -22,7 +22,7 @@ Earlier scratch attempts were not isolated correctly and are not used as evidenc
 
 ## Privacy verification update
 
-Portfolio generation and exhausted Sidekiq retries now persist generic failure messages and log only the exception class, because provider error text may contain response bodies or transcript fragments. A regression spec asserts the stored error and log do not include provider message details.
+Portfolio generation and exhausted Sidekiq retries persist generic failure messages and log only the exception class. Gemini HTTP errors no longer log or attach raw response bodies to exceptions. Regression specs assert provider exception details are not exposed through stored error state, application logs, or HTTP client error objects.
 
 ## CI evidence boundary
 

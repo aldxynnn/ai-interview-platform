@@ -68,7 +68,7 @@ Percobaan valid dijalankan pada branch terpisah `scratch/seeded-fault-unscoped-2
 Percobaan scratch sebelumnya tidak terisolasi dengan benar dan tidak dipakai sebagai bukti. Percobaan yang dicantumkan di atas adalah bukti fault/recovery yang valid; fault hanya berada di scratch branch, bukan branch implementasi.
 ## 8. Privasi, UU PDP, dan risiko tersisa
 
-Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat response body atau fragmen transcript, jadi generation error yang disimpan dan log kini generik; pesan error mentah tidak ditulis. Sebelum produksi, review tujuan/dasar pemrosesan, pemberitahuan kandidat, minimisasi, retensi/penghapusan, kontrol akses, transmisi ke penyedia AI, penerima data, dan kewajiban UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Ini daftar risiko untuk ditinjau, bukan kesimpulan legal atau klaim pelanggaran.
+Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat response body atau fragmen transcript. Portfolio generation menyimpan error generik, dan Gemini HTTP client tidak mencatat atau menempelkan raw response body pada exception. Sebelum produksi, review tujuan/dasar pemrosesan, pemberitahuan kandidat, minimisasi, retensi/penghapusan, kontrol akses, transmisi ke penyedia AI, penerima data, dan kewajiban UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Ini daftar risiko untuk ditinjau, bukan kesimpulan legal atau klaim pelanggaran.
 
 ## 9. Submission dan tindak lanjut
 
