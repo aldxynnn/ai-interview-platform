@@ -4,7 +4,7 @@ Tanggal: 26 Oktober 2026
 Branch implementasi dan review: `feat/fit-gap-trustworthy-revamp`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
-> **Status implementasi: test suite pernah lulus pada branch sumber implementasi; CI untuk branch ini belum terkonfirmasi.** Run 40264168296 berasal dari branch `take-home/fitgap-reliability-final`, bukan branch ini. Workflow kini dikonfigurasi agar push ke `feat/**` memicu CI. Seeded-fault failure dan recovery pass telah dibuktikan pada scratch branch terpisah. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. Video belum direkam.
+> **Status implementasi: review draft tersedia; CI terbaru masih berjalan saat dokumentasi diperbarui.** CI lama 40264168296 berasal dari branch sumber implementasi, bukan branch ini. PR draft di fork: https://github.com/aldxynnn/ai-interview-platform/pull/8. Run untuk PR #8: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449261841; status harus dicek lagi sebelum menyatakan lulus. Seeded-fault failure dan recovery pass telah dibuktikan pada scratch branch terpisah. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. Video belum direkam.
 
 ## 1. Produk dan pengguna
 
@@ -73,8 +73,8 @@ Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat r
 ## 9. Submission dan tindak lanjut
 
 - Branch implementasi (berbasis main fork, dengan code, tests, dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/feat/fit-gap-trustworthy-revamp
-- Bukti CI pada branch sumber implementasi (bukan branch ini): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296. CI branch ini perlu diperiksa setelah push.
-- PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch implementasi yang disiapkan untuk PR: `feat/fit-gap-trustworthy-revamp`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
+- CI pada branch sumber implementasi (bukan branch ini) sebelumnya lulus: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296. PR draft pada branch ini memicu run baru: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449261841; hasil akhirnya belum dicatat saat dokumen ini diperbarui.
+- PR draft untuk review di fork: https://github.com/aldxynnn/ai-interview-platform/pull/8. PR ke upstream `rakamindev/ai-interview-platform` belum berhasil dibuat karena integrasi menolak dengan HTTP 403 (Resource not accessible by integration); bila perlu submission upstream, buat PR manual dari `aldxynnn:feat/fit-gap-trustworthy-revamp` ke `rakamindev:main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
 - Local setup: ikuti `api/README.md` dan `web/README.md`; belum diverifikasi dari clone bersih.
