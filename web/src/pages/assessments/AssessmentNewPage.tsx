@@ -107,9 +107,9 @@ export default function AssessmentNewPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto max-w-3xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="mb-6 flex items-center gap-2 border-b pb-5">
         <Link to="/assessments" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -118,7 +118,7 @@ export default function AssessmentNewPage() {
         <span className="text-sm font-medium">New Assessment</span>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-7">
         {/* Role title */}
         <div className="space-y-1.5">
           <Label htmlFor="name">
@@ -180,7 +180,7 @@ export default function AssessmentNewPage() {
           <Label>Skills to assess</Label>
 
           {fields.length === 0 ? (
-            <div className="border rounded-lg p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground sm:p-8">
               <p className="mb-1">No skills added yet.</p>
               <p>Add at least one skill to continue.</p>
             </div>
