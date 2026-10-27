@@ -1,87 +1,104 @@
 # Rakamin Take-home — Product Impact & Fit/Gap Reliability
 
-Tanggal: 26 Oktober 2026  
-Branch implementasi dan review: `feat/fit-gap-trustworthy-revamp`  
-Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
+Tanggal verifikasi: 27 Oktober 2026  
+Branch implementasi: `feat/fit-gap-trustworthy-revamp`  
+Commit branch yang diverifikasi CI: `632aacdf59ef82d0fe7eeb091bf7558d46bc7459`
 
-> **Status implementasi: CI terbaru untuk branch implementasi lulus.** Run 40449318172: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449318172 — API RSpec, migration rollback/re-apply, Web Vitest, dan production build seluruhnya sukses. PR draft di fork: https://github.com/aldxynnn/ai-interview-platform/pull/8. Seeded-fault failure dan recovery pass telah dibuktikan pada scratch branch terpisah. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. Video belum direkam.
+> **Status: implementasi dan CI tersedia; submission keseluruhan belum lengkap.** CI run [40449318172](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449318172) selesai dengan status success untuk API RSpec, rollback/re-apply migration, Web Vitest, dan production build. Draft PR [#8](https://github.com/aldxynnn/ai-interview-platform/pull/8) berada di fork pribadi. Browser/responsive review, screenshot aktual, clean-clone setup, dan live Gemini belum diverifikasi. Video dan PR upstream belum tersedia.
 
-## 1. Produk dan pengguna
+## Ringkasan eksekutif
 
-Platform mendukung assessor/recruiter dalam membandingkan kompetensi kandidat dengan kebutuhan posisi. Hiring manager menggunakan hasilnya dalam keputusan lanjutan. Kandidat ikut terdampak walau tidak memilih alat ini. Karena itu, ketiadaan bukti tidak boleh otomatis menjadi bukti ketidakmampuan, dan AI harus mendukung penilaian manusia.
+Fokus perubahan adalah membuat alur Fit/Gap lebih dapat dipercaya dan aman, bukan melakukan redesign luas. Prioritas utama: tenant authorization, kejelasan status skill yang belum dinilai, lifecycle job/report, konsistensi kontrak API–UI, dan perlindungan data dari error provider yang mungkin berisi transcript. Ini sesuai tujuan case study untuk menilai dampak produk dan kualitas eksekusi.
 
-Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, TypeScript, Vite, Tailwind, Radix UI. Brief menyebut baseline awal tidak memiliki RSpec specs, frontend test runner, atau CI.
+## Step 1 — Memahami sistem dan baseline
 
-## 2. Temuan prioritas
+- Repository memisahkan `api/` (Rails, PostgreSQL, Sidekiq, RSpec, Gemini) dan `web/` (React 18, TypeScript, Vite, Tailwind, Radix UI).
+- README menjelaskan urutan setup, kebutuhan PostgreSQL/Redis, dan port API `3001` serta web `5173`.
+- Brief menyatakan baseline tidak memiliki RSpec specs, frontend test runner, atau CI; branch ini menambahkan tes dan workflow CI.
+- **Batas verifikasi:** dokumentasi setup telah ditelaah, tetapi menjalankan kedua service dan menguji seluruh alur browser dari clone bersih belum diverifikasi di lingkungan ini. Jangan mengklaim smoke test manual selesai sebelum kamu menjalankannya.
 
-| Prioritas | Temuan | Dampak / solusi |
-|---|---|---|
-| P1 | Risiko akses lintas tenant pada portfolio/skill/report dan lookup vacancy | Resource harus di-scope ke tenant aktif; request tenant asing harus ditolak tanpa side effect. |
-| P1 | Kontrak Fit/Gap API/UI tidak konsisten (`expected_level` vs `required_level`, override flag) | Selaraskan payload dan tipe agar perbandingan tidak salah atau ambigu. |
-| P1 | Lifecycle report/polling dan worker rentan duplikasi atau hasil lama | Status, fingerprint, lease token, error handling, pertahankan report terakhir. |
-| P1 | Kegagalan lookup invitation dapat tampak seperti interview selesai | Pisahkan completion dari error dan sediakan retry. |
-| P2 | Skill matching/evidence AI dapat ambigu | Bedakan `not_assessed` dari gap; gunakan skill ID stabil dan validasi kutipan transcript. |
-| P2 | Portfolio generation dapat berisiko partial write/override hilang | Validasi sebelum write, transaksi, pertahankan override assessor. |
-| P2/P3 | Setup docs dan aksesibilitas/responsive belum seluruhnya terbukti | README/path/port diperbaiki; browser review masih dibutuhkan. |
+## Step 2 — Produk, pengguna, dan dampak
 
-## 3. Alternatif dan keputusan
+Pengguna utama adalah assessor/recruiter yang membandingkan bukti kompetensi kandidat dengan kebutuhan vacancy; hiring manager memakai hasil sebagai masukan keputusan. Kandidat juga terdampak walau tidak memakai dashboard secara langsung. Sistem perlu membantu keputusan manusia, bukan mengubah ketiadaan bukti menjadi kesimpulan bahwa kandidat tidak mampu.
 
-- **A — Trustworthy Fit/Gap end-to-end (dipilih):** dampak langsung pada otorisasi, keandalan hasil, dan recovery; biaya sedang; scope terukur.
-- **B — Redesign visual seluruh aplikasi:** potensi polish tinggi, tetapi biaya dan risiko perubahan luas; tidak menyelesaikan trust boundary secepat opsi A.
-- **C — Hanya selaraskan kontrak API/UI:** murah, tetapi tidak mengatasi otorisasi, job lifecycle, dan integritas data.
+Risiko produk yang ditangani:
+- Akses lintas tenant dapat membocorkan portfolio atau laporan kandidat.
+- Label gap yang salah dapat membuat assessor/hiring manager mengambil keputusan berdasarkan sinyal yang keliru.
+- Job gagal atau hasil lama dapat membuat laporan tidak tersedia atau tidak konsisten.
+- Error AI yang memuat response body/transcript dapat mengekspos data pribadi lewat log atau pesan error.
 
-## 4. Perubahan yang dibuat
+Konteks Indonesia: transcript wawancara dapat memuat data pribadi; implementasi perlu ditinjau terhadap UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Catatan ini adalah identifikasi risiko teknis, bukan pendapat hukum. Riset pasar eksternal dan wawancara pengguna tidak dilakukan dalam pekerjaan ini; klaim di atas berangkat dari brief dan analisis alur produk, bukan riset pasar primer.
 
-- Tenant-scoping portfolio, portfolio skill, vacancy, dan report.
-- Kontrak Fit/Gap diselaraskan; `not_assessed` dibedakan dari gap.
-- Report scheduler/worker menggunakan status, fingerprint, lease token, dan guard idempotensi.
-- Portfolio generator memvalidasi respons dan menggunakan transaksi sambil menjaga override assessor.
-- Error provider saat generation disimpan dan dilog sebagai pesan generik; detail response provider tidak ditulis ke log atau status error.
-- Interview page menampilkan error invitation dan retry, bukan completion palsu.
-- Vitest/component test, RSpec request/service specs, CI workflow, perbaikan README port/path.
-- Tambahan regression spec untuk mencegah tenant A menjadwalkan Fit/Gap dengan vacancy tenant B.
+## Step 3 — Temuan, prioritas, dan jenis masalah
 
-## 5. Hasil pengujian
+| Prioritas | Temuan | Klasifikasi | Dampak dan arah perbaikan |
+|---|---|---|---|
+| P1 | Resource portfolio/skill/report atau vacancy perlu dibatasi pada tenant aktif | Risiko otorisasi; regression test membuktikan bypass scope dapat dideteksi | Mencegah akses lintas organisasi; scope resource dan tambahkan cross-tenant tests. |
+| P1 | Kontrak Fit/Gap API dan UI berbeda pada field level/override | Defect/ketidakselarasan implementasi | Hindari level requirement atau override salah ditafsirkan; selaraskan payload dan tipe. |
+| P1 | Lifecycle report, polling, dan worker dapat mengalami duplicate/stale work | Risiko reliability pada proses asynchronous | Status, fingerprint, lease token, dan idempotency guard membatasi pekerjaan ganda dan hasil usang. |
+| P1 | Kegagalan lookup invitation dapat tampak seperti interview selesai | Defect error-state UX | Tampilkan error dan retry, bukan completion palsu. |
+| P2 | Skill tanpa bukti dapat disalahartikan sebagai gap | Ambiguitas spesifikasi/produk yang ditangani lewat kontrak status eksplisit | Bedakan `not_assessed` dari gap yang didukung bukti. |
+| P2 | Portfolio generation dapat gagal parsial atau menghilangkan override assessor | Risiko integritas data | Validasi output sebelum write, transaksi, dan pertahankan override manusia. |
+| P2 | Provider exception bisa mengandung detail sensitif | Risiko privasi/logging | Simpan/log pesan generik; jangan keluarkan raw provider response. |
+| P2/P3 | Setup, responsive state, dan interaksi keyboard belum dibuktikan lengkap | Kesenjangan verifikasi, bukan klaim bahwa semua UI rusak | README/CI diperbaiki; manual browser review tetap harus dilakukan. |
 
-Pada branch sumber implementasi, CI lulus dengan 20 RSpec examples / 0 failures, Vitest, production build, serta migration rollback dan re-apply. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296. Ini bukan bukti bahwa commit terbaru pada branch ini telah diuji; status CI branch ini masih perlu diverifikasi setelah push.
+Perbedaan penting: error `DoubleRenderError` pada `find_vacancy!` ditemukan sebagai defect konkret dan diperbaiki. Sebaliknya, query vacancy tanpa `tenant_id` secara eksplisit tidak dengan sendirinya membuktikan bypass karena model memiliki default scope `TenantScoped`. Kondisi itu diperkuat dengan tenant condition eksplisit sebagai defense-in-depth. Eksperimen fault yang valid sengaja menggunakan `Vacancy.unscoped.find_by` untuk benar-benar melewati default scope.
 
-Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
+## Step 4 — Pilihan solusi dan trade-off
 
-Browser E2E/responsive, screenshot aktual, Gemini live/timeout, dan setup dari clone bersih belum dilakukan atau belum terverifikasi. CI hijau tidak membuktikan item-item manual tersebut.
-## 6. AI Verification Moment
+| Opsi | Dampak produk | Biaya | Maintainability | Failure mode / risiko | Kesesuaian konteks |
+|---|---|---|---|---|---|
+| A. Trustworthy Fit/Gap end-to-end (**dipilih**) | Tinggi: otorisasi, kejelasan hasil, recovery | Sedang | Menyatukan lifecycle dan kontrak; perlu menjaga kompleksitas status tetap terkendali | Race condition, stale jobs, dan provider failure perlu dites eksplisit | Paling tepat karena hasil assessment menyangkut data kandidat dan keputusan hiring. |
+| B. Redesign visual luas | Meningkatkan polish dan kemudahan penggunaan | Tinggi | Berisiko mengubah banyak komponen sekaligus | Regression visual dan scope creep; tidak menyelesaikan trust boundary dengan cepat | Kurang tepat sebagai prioritas pertama untuk take-home yang menekankan reliability. |
+| C. Hanya selaraskan API/UI | Mengurangi mismatch dengan biaya rendah | Rendah | Sederhana | Otorisasi, job duplicate, dan integritas data tetap tidak tertangani | Tidak cukup untuk alur assessment yang asynchronous dan multi-tenant. |
 
-Verifikasi menemukan error path nyata pada `Api::V1::PortfoliosController#find_vacancy!`: saat vacancy tidak ditemukan atau ditolak, helper merender error tetapi sebelumnya mengembalikan hasil render yang truthy; controller lalu berlanjut dan dapat memicu `AbstractController::DoubleRenderError`. Helper diperbaiki agar merender error lalu mengembalikan `nil`, dan request spec membuktikan same-tenant path bekerja. CI awal menangkap kegagalan ini; CI setelah perbaikan lulus.
+Opsi A dipilih karena menyelesaikan risiko dengan dampak paling tinggi sambil menjaga perubahan tetap terarah. Trade-off-nya: lifecycle status dan retry logic menambah kompleksitas, sehingga perlu regression tests dan dokumentasi yang jelas. Redesign visual penuh sengaja tidak menjadi scope; polish visual perlu dinilai melalui manual review yang belum dilakukan.
 
-Pembedaan penting: review awal juga menyorot query vacancy yang tidak menuliskan `tenant_id`. Investigasi lebih lanjut menemukan model `Vacancy` memakai `TenantScoped` default scope. Karena itu, `Vacancy.find_by(id: id)` saja tidak cukup untuk menyimpulkan adanya bypass tenant dalam konfigurasi ini. Query sekarang tetap mencantumkan `tenant_id: current_tenant_id` sebagai defense-in-depth. Seeded fault yang valid menggunakan `Vacancy.unscoped.find_by(id: id)` untuk benar-benar melewati default scope; hasilnya dicatat di bagian berikut.
+## Step 5 — Implementasi dan acceptance criteria
 
-Detail: [verification-notes.md](verification-notes.md).
+Perubahan yang dibuat:
+- Tenant-scope pada portfolio, portfolio skill, vacancy, dan Fit/Gap report; tambahkan tes untuk scheduling lintas tenant.
+- Selaraskan field/tipe API dan UI Fit/Gap.
+- Bedakan `not_assessed` dari gap kompetensi.
+- Tambahkan lifecycle report/scheduler/worker dengan status, fingerprint, lease token, dan guard idempotensi.
+- Validasi hasil portfolio generator sebelum write, gunakan transaksi, dan pertahankan override assessor.
+- Hindari menyimpan/log raw error dari provider AI; error yang disimpan dan ditampilkan bersifat generik.
+- Tampilkan error invitation dan retry di UI, bukan status completion palsu.
+- Tambahkan RSpec, Vitest/component tests, CI workflow, dan perbaikan petunjuk setup.
 
-## 7. Seeded Fault Test
+Acceptance criteria yang menjadi dasar review:
+1. Request tenant A untuk resource tenant B ditolak dan tidak menjadwalkan pekerjaan atau membuat side effect.
+2. Skill tanpa bukti cukup berstatus `not_assessed`; hanya bukti yang memenuhi kriteria yang dapat mendukung gap.
+3. Request generation berulang untuk fingerprint yang sama tidak membuat pekerjaan duplikat; job lama tidak boleh menimpa hasil baru.
+4. Kegagalan provider tidak membocorkan raw response/transcript ke log atau error yang disimpan.
+5. Kegagalan invitation terlihat sebagai error yang bisa dicoba ulang, bukan completion.
+6. Portfolio generation memvalidasi hasil sebelum transaksi/write dan tidak menghapus override assessor.
+7. Tes backend/frontend dan production build lulus.
+8. Manual browser review harus memeriksa loading, empty, error/retry, partial/missing assessment, long text, responsive layout, keyboard/focus, serta console/network. Kriteria ini **belum diverifikasi manual**.
 
-Percobaan valid dijalankan pada branch terpisah `scratch/seeded-fault-unscoped-20261026`, berbasis commit dengan positive-control test.
+## Bukti pengujian
 
-- Fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316 — mengubah lookup menjadi `Vacancy.unscoped.find_by(id: id)`.
-- CI fault: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272 — **gagal sesuai harapan**: request lintas tenant menerima 503, bukan 404; 19 examples, 1 failure. Ini membuktikan regression test mendeteksi bypass tenant scope.
-- Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8f3e024ec8a8c78a5818d — mengembalikan lookup dengan tenant scope.
-- CI recovery: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460 — **lulus**.
+- **CI final branch:** [Run 40449318172](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449318172), commit `632aacdf59ef82d0fe7eeb091bf7558d46bc7459`, status success. Kedua job sukses: API RSpec (termasuk migration rollback/re-apply) dan Web Vitest + production build.
+- **Seeded fault:** [fault commit](https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316) pada branch scratch mengubah lookup menjadi `Vacancy.unscoped.find_by`; [CI fault](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272) gagal sesuai harapan karena cross-tenant test gagal (19 examples, 1 failure). [Recovery commit](https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8e3f024ec8a8c78a5818d) memulihkan tenant scope; [CI recovery](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460) lulus. Fault hanya berada di scratch branch.
+- **AI Verification Moment:** CI menangkap defect nyata `DoubleRenderError` di `Api::V1::PortfoliosController#find_vacancy!`. Helper sebelumnya merender error tetapi mengembalikan nilai truthy, sehingga action bisa berlanjut dan mencoba render lagi. Helper diubah agar secara eksplisit mengembalikan `nil` setelah render error; request specs dan CI setelah perbaikan lulus.
+- Bukti rinci: [verification-notes.md](verification-notes.md).
 
-Percobaan scratch sebelumnya tidak terisolasi dengan benar dan tidak dipakai sebagai bukti. Percobaan yang dicantumkan di atas adalah bukti fault/recovery yang valid; fault hanya berada di scratch branch, bukan branch implementasi.
-## 8. Privasi, UU PDP, dan risiko tersisa
+CI membuktikan checks otomatis pada commit tersebut; **CI tidak membuktikan** tampilan browser, responsive behavior, setup lokal dari clone bersih, atau live Gemini integration.
 
-Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat response body atau fragmen transcript, jadi generation error yang disimpan dan log kini generik; pesan error mentah tidak ditulis. Sebelum produksi, review tujuan/dasar pemrosesan, pemberitahuan kandidat, minimisasi, retensi/penghapusan, kontrol akses, transmisi ke penyedia AI, penerima data, dan kewajiban UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Ini daftar risiko untuk ditinjau, bukan kesimpulan legal atau klaim pelanggaran.
+## Privasi dan risiko tersisa
 
-## 9. Submission dan tindak lanjut
+Transcript wawancara dapat memuat data pribadi. Sebelum produksi, tim tetap perlu meninjau tujuan/dasar pemrosesan, pemberitahuan kandidat, minimisasi data, retensi/penghapusan, kontrol akses, transmisi ke penyedia AI, penerima data, dan kewajiban UU PDP. Tidak ada klaim bahwa tinjauan legal formal telah dilakukan.
 
-- Branch implementasi (berbasis main fork, dengan code, tests, dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/feat/fit-gap-trustworthy-revamp
-- CI pada branch sumber implementasi (bukan branch ini) sebelumnya lulus: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296. PR draft pada branch ini memicu run baru: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449261841; hasil akhirnya belum dicatat saat dokumen ini diperbarui.
-- PR draft untuk review di fork: https://github.com/aldxynnn/ai-interview-platform/pull/8. PR ke upstream `rakamindev/ai-interview-platform` belum berhasil dibuat karena integrasi menolak dengan HTTP 403 (Resource not accessible by integration); bila perlu submission upstream, buat PR manual dari `aldxynnn:feat/fit-gap-trustworthy-revamp` ke `rakamindev:main`.
-- Video walkthrough 3–5 menit: belum direkam/di-host.
-- UI screenshot: belum ada karena browser smoke test belum dilakukan.
-- Local setup: ikuti `api/README.md` dan `web/README.md`; belum diverifikasi dari clone bersih.
+## Status submission — jangan tandai selesai sebelum item manual beres
 
-### Acceptance criteria yang belum tertutup
+- [x] Branch implementasi dan perubahan kode tersedia: [branch](https://github.com/aldxynnn/ai-interview-platform/tree/feat/fit-gap-trustworthy-revamp).
+- [x] Draft PR untuk review di fork: [PR #8](https://github.com/aldxynnn/ai-interview-platform/pull/8).
+- [x] CI terbaru branch final lulus: [run 40449318172](https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449318172).
+- [x] Analisis, prioritas, trade-off, acceptance criteria, dan batas verifikasi didokumentasikan di folder `assessment/`.
+- [ ] Jalankan app dan lakukan browser smoke test desktop/mobile; cek console/network, loading/empty/error/retry, long text, keyboard/focus; ambil screenshot asli. **Dikerjakan oleh submitter.**
+- [ ] Verifikasi setup dari clone bersih dan uji Gemini failure/timeout (stub; live jika kredensial tersedia). **Dikerjakan oleh submitter.**
+- [ ] Buat PR ke upstream `rakamindev/ai-interview-platform`. Upaya via integrasi ditolak HTTP 403; PR fork bukan pengganti PR upstream bila brief mewajibkannya. **Dikerjakan manual oleh submitter dengan akses yang sesuai.**
+- [ ] Rekam dan host video walkthrough 3–5 menit, tambahkan link ke dokumen/submission. **Dikerjakan oleh submitter.**
+- [ ] Setelah screenshot dan link video ditambahkan, ekspor laporan final ke PDF. **Dikerjakan oleh submitter.**
 
-1. Jalankan browser smoke test desktop/mobile, periksa console/network, keyboard/focus, empty/error/long-text states; ambil screenshot aktual.
-2. Verifikasi local setup dari clone bersih dan failure path Gemini dengan stub; live integration jika kredensial tersedia.
-3. Buat PR dari branch final `feat/fit-gap-trustworthy-revamp` ke upstream `main`; integrasi create PR ditolak HTTP 403.
-4. Rekam dan host video walkthrough 3–5 menit; tambahkan link video pada PR/submission.
+Catatan tenggat: brief mencantumkan Rabu, 19 Agustus 2026 pukul 13.00 WIB; tanggal tersebut telah lewat per tanggal verifikasi ini. Status pengerjaan di atas tidak mengubah tenggat yang tercantum di brief.
