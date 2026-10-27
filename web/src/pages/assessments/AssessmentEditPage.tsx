@@ -162,7 +162,7 @@ export default function AssessmentEditPage() {
         <Separator />
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
           <Button type="button" variant="outline" onClick={() => navigate(`/assessments/${id}/invite`)}>Cancel</Button>
           <Button type="submit" disabled={submitting}>
             {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
