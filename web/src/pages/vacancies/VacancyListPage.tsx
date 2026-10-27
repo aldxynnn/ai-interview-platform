@@ -21,10 +21,10 @@ export default function VacancyListPage() {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Vacancies</h1>
-        <Button onClick={() => navigate("/vacancies/new")}>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Workspace</p><h1 className="text-2xl font-semibold tracking-tight">Vacancies</h1><p className="text-sm text-muted-foreground">Manage the roles and skill requirements used for Fit/Gap analysis.</p></div>
+        <Button className="w-full sm:w-auto" onClick={() => navigate("/vacancies/new")}>
           <Plus className="h-4 w-4 mr-1.5" /> New Vacancy
         </Button>
       </div>
@@ -40,7 +40,7 @@ export default function VacancyListPage() {
           {[1, 2].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
         </div>
       ) : vacancies.length === 0 ? (
-        <div className="border rounded-lg p-12 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl border border-dashed bg-card px-5 py-12 text-center text-sm text-muted-foreground sm:px-10">
           <p className="mb-3">No vacancies yet.</p>
           <Button variant="outline" onClick={() => navigate("/vacancies/new")}>
             <Plus className="h-4 w-4 mr-1.5" /> Create your first vacancy
@@ -51,13 +51,13 @@ export default function VacancyListPage() {
           {vacancies.map((v) => (
             <Card
               key={v.id}
-              className="cursor-pointer hover:border-primary/40 transition-colors"
+              className="cursor-pointer rounded-xl shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => navigate(`/vacancies/${v.id}/edit`)}
             >
-              <CardContent className="py-3 px-4 flex items-center justify-between">
+              <CardContent className="flex items-center justify-between gap-4 px-4 py-4 sm:px-5">
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <p className="font-medium text-sm">{v.role_title}</p>
+                  <p className="break-words text-sm font-semibold">{v.role_title}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </CardContent>
