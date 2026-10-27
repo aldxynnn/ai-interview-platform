@@ -39,7 +39,8 @@ Rails.application.routes.draw do
       # Portfolio skills overrides
       resources :portfolio_skills, only: [] do
         member do
-          post :override
+          post   :override
+          delete :override, to: 'portfolio_skills#destroy_override'
         end
       end
 

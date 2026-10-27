@@ -7,7 +7,7 @@ module Api
 
       before_action :set_portfolio_skill
 
-      # POST /api/v1/portfolio-skills/:id/override
+      # POST /api/v1/portfolio_skills/:id/override
       def override
         existing = @portfolio_skill.assessor_override
 
@@ -36,14 +36,32 @@ module Api
         end
       end
 
+      # DELETE /api/v1/portfolio_skills/:id/override
+      # Allows assessors to undo an override and revert back to AI rating
+      def destroy_override
+        existing = @portfolio_skill.assessor_override
+
+        if existing
+          existing.destroy!
+          regenerate_stale_fitgap_reports
+          json_response(
+            message: "Override removed successfully",
+            portfolio_skill_id: @portfolio_skill.id,
+            ai_level: @portfolio_skill.ai_level
+          )
+        else
+          json_error("No override found for this skill", :not_found)
+        end
+      end
+
       private
 
+      # Trigger background recomputation without destroying existing reports,
+      # preventing data loss if worker fails or encounters network rate limits.
       def regenerate_stale_fitgap_reports
         portfolio = @portfolio_skill.portfolio
-        FitGapReport.where(portfolio_id: portfolio.id).each do |report|
-          vacancy_id = report.vacancy_id
-          report.destroy
-          FitGapGeneratorWorker.perform_async(portfolio.id, vacancy_id)
+        FitGapReport.where(portfolio_id: portfolio.id).find_each do |report|
+          FitGapGeneratorWorker.perform_async(portfolio.id, report.vacancy_id)
         end
       end
 
