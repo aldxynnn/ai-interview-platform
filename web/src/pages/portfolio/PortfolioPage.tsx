@@ -47,7 +47,7 @@ export default function PortfolioPage() {
         setVacancies(vRes.data.vacancies);
         setCandidateName(sRes.data.session.candidate_name ?? null);
       })
-      .catch(() => {})
+      .catch(() => setPageError("Could not load portfolio data. Check your connection and try again."))
       .finally(() => setLoading(false));
   }, [fetchPortfolio, sessionId]);
 
@@ -66,6 +66,7 @@ export default function PortfolioPage() {
   const handleExport = async (format: "pdf" | "json") => {
     if (!portfolio) return;
     setExporting(format);
+    setExportError(null);
     try {
       const res = await portfoliosApi.exportPortfolio(
         portfolio.id,
@@ -89,6 +90,8 @@ export default function PortfolioPage() {
         a.click();
         URL.revokeObjectURL(url);
       }
+    } catch {
+      setExportError("Export could not be completed. Please try again.");
     } finally {
       setExporting(null);
     }
@@ -104,8 +107,21 @@ export default function PortfolioPage() {
     );
   }
 
+  if (pageError) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-card px-6 py-10 text-center">
+          <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
+          <h1 className="text-lg font-semibold">Portfolio unavailable</h1>
+          <p className="max-w-md text-sm leading-6 text-muted-foreground">{pageError}</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Retry loading</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-2">
