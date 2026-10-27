@@ -4,7 +4,7 @@ Tanggal: 26 Oktober 2026
 Branch implementasi dan review: `feat/fit-gap-trustworthy-revamp`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
-> **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI pada branch final lulus, termasuk privacy regression test, pada run 40264168296. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
+> **Status implementasi: test suite pernah lulus pada branch sumber implementasi; CI untuk branch ini belum terkonfirmasi.** Run 40264168296 berasal dari branch `take-home/fitgap-reliability-final`, bukan branch ini. Workflow kini dikonfigurasi agar push ke `feat/**` memicu CI. Seeded-fault failure dan recovery pass telah dibuktikan pada scratch branch terpisah. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. Video belum direkam.
 
 ## 1. Produk dan pengguna
 
@@ -43,7 +43,7 @@ Arsitektur: `api/` Rails, PostgreSQL, Sidekiq, RSpec, Gemini; `web/` React 18, T
 
 ## 5. Hasil pengujian
 
-CI yang menjalankan code + positive-control tenant/same-tenant scheduling lulus pada commit `5a0b0dd488013d52f7623860a83b703db931bda5`: 20 RSpec examples / 0 failures, Vitest dan production build lulus, serta migration rollback dan re-apply lulus. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261210781. CI branch HEAD implementasi terbaru lulus pada commit `34f70ea269d95c9a446476531198281ace866eff`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261724286.
+Pada branch sumber implementasi, CI lulus dengan 20 RSpec examples / 0 failures, Vitest, production build, serta migration rollback dan re-apply. Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296. Ini bukan bukti bahwa commit terbaru pada branch ini telah diuji; status CI branch ini masih perlu diverifikasi setelah push.
 
 Perbaikan `DoubleRenderError` sebelumnya juga lulus CI pada commit `fefb4ac2d65ade6e2d07821316c4da3a32179d61`: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40260693346.
 
@@ -73,7 +73,7 @@ Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat r
 ## 9. Submission dan tindak lanjut
 
 - Branch implementasi (berbasis main fork, dengan code, tests, dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/feat/fit-gap-trustworthy-revamp
-- CI final branch lulus (20 RSpec examples, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296
+- Bukti CI pada branch sumber implementasi (bukan branch ini): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296. CI branch ini perlu diperiksa setelah push.
 - PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch implementasi yang disiapkan untuk PR: `feat/fit-gap-trustworthy-revamp`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
