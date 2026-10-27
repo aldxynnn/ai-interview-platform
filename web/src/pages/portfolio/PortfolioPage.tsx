@@ -9,7 +9,7 @@ import { sessionsApi } from "@/services/sessions";
 import { vacanciesApi } from "@/services/vacancies";
 import { portfoliosApi } from "@/services/portfolios";
 import { usePolling } from "@/hooks/usePolling";
-import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText } from "lucide-react";
+import { AlertCircle, ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText } from "lucide-react";
 import type { Portfolio, AssessorOverride, Vacancy } from "@/types";
 
 export default function PortfolioPage() {
@@ -22,7 +22,7 @@ export default function PortfolioPage() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [selectedVacancy, setSelectedVacancy] = useState<string>("");
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
-  const [candidateName, setCandidateName] = useState<string | null>(null);
+  const [candidateName, setCandidateName] = useState<string | null>(null);\n  const [pageError, setPageError] = useState<string | null>(null);\n  const [exportError, setExportError] = useState<string | null>(null);
 
   const fetchPortfolio = useCallback(async () => {
     const res = await sessionsApi.getPortfolio(Number(sessionId));
@@ -96,7 +96,7 @@ export default function PortfolioPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4">
+      <div className="mx-auto max-w-3xl space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-48 w-full" />
@@ -107,20 +107,20 @@ export default function PortfolioPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-2">
           <Link to={`/assessments/${id}/invite`} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-lg font-semibold">Portfolio Results</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Assessment workspace</p>\n            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Portfolio results</h1>
             {candidateName && (
               <p className="text-sm text-muted-foreground">{candidateName}</p>
             )}
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             to={`/assessments/${id}/sessions/${sessionId}/transcript`}
             className="inline-flex items-center gap-1 text-sm border rounded-md px-3 py-1.5 hover:bg-accent transition-colors"
@@ -155,7 +155,7 @@ export default function PortfolioPage() {
 
       {/* Generating state */}
       {generating && (
-        <div className="border rounded-lg p-12 text-center space-y-3">
+        <div role="status" className="space-y-3 rounded-xl border bg-card px-5 py-12 text-center sm:px-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <div>
             <p className="font-medium">Generating portfolio...</p>
@@ -166,9 +166,9 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      {/* Failed state */}
+      {exportError && (\n        <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">\n          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />\n          <p>{exportError}</p>\n        </div>\n      )}\n\n      {/* Failed state */}
       {!generating && portfolio?.generation_status === "failed" && (
-        <div className="border border-destructive/40 rounded-lg p-6 text-center space-y-3">
+        <div role="alert" className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
           <p className="text-sm text-destructive">Portfolio generation failed.</p>
           <Button
             variant="outline"
@@ -232,9 +232,9 @@ export default function PortfolioPage() {
           <Separator />
 
           {/* Fit/Gap */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center">
             <Select value={selectedVacancy} onValueChange={setSelectedVacancy}>
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="w-full sm:w-64">
                 <SelectValue placeholder="Choose vacancy..." />
               </SelectTrigger>
               <SelectContent>
@@ -245,7 +245,7 @@ export default function PortfolioPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={handleRunFitGap} disabled={!selectedVacancy}>
+            <Button className="w-full sm:w-auto" onClick={handleRunFitGap} disabled={!selectedVacancy}>
               Run Fit/Gap Analysis →
             </Button>
           </div>
