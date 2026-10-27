@@ -68,27 +68,27 @@ export default function ComparisonTable({ comparisons }: ComparisonTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Fit-gap summary">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Fit-gap summary">
         {([
           ["Match", count("match"), "text-emerald-700"],
           ["Gap", count("gap"), "text-amber-700"],
           ["Exceeds", count("exceed"), "text-emerald-700"],
           ["Not assessed", count("not_assessed"), "text-muted-foreground"],
         ] as const).map(([label, value, color]) => (
-          <div key={label} className="rounded-lg border bg-card px-3 py-2.5">
+          <div key={label} className="rounded-xl border bg-card px-3 py-3 shadow-none transition-colors sm:px-4">
             <p className="text-xs text-muted-foreground">{label}</p>
-            <p className={cn("mt-1 text-xl font-semibold tabular-nums", color)}>{value}</p>
+            <p className={cn("mt-1.5 text-2xl font-semibold tracking-tight tabular-nums", color)}>{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full min-w-[680px] text-sm">
           <caption className="sr-only">Candidate skills compared with vacancy requirements</caption>
           <thead>
-            <tr className="border-b bg-muted/50">
-              <th scope="col" className="px-4 py-3 text-left font-medium">Skill</th>
-              <th scope="col" className="px-4 py-3 text-center font-medium">Required</th>
+            <tr className="border-b bg-muted/60">
+              <th scope="col" className="px-4 py-3.5 text-left font-medium">Skill</th>
+              <th scope="col" className="px-4 py-3.5 text-center font-medium">Required</th>
               <th scope="col" className="px-4 py-3 text-center font-medium">Candidate</th>
               <th scope="col" className="px-4 py-3 text-left font-medium">Confidence</th>
               <th scope="col" className="px-4 py-3 text-left font-medium">Result</th>
@@ -98,9 +98,9 @@ export default function ComparisonTable({ comparisons }: ComparisonTableProps) {
             {comparisons.map((comparison, index) => (
               <tr
                 key={(comparison.skill_id ?? comparison.skill_label) + "-" + index}
-                className="border-b last:border-0 hover:bg-muted/20"
+                className="border-b last:border-0 hover:bg-muted/30"
               >
-                <th scope="row" className="max-w-[280px] px-4 py-3 text-left font-medium">
+                <th scope="row" className="max-w-[280px] px-4 py-4 text-left align-top font-medium">
                   <span className="break-words">{comparison.skill_label}</span>
                   {comparison.is_override && (
                     <span className="mt-1 flex items-center gap-1 text-xs font-normal text-sky-700">
@@ -109,16 +109,16 @@ export default function ComparisonTable({ comparisons }: ComparisonTableProps) {
                     </span>
                   )}
                 </th>
-                <td className="px-4 py-3 text-center text-muted-foreground">
+                <td className="px-4 py-4 text-center align-top text-muted-foreground">
                   {LEVEL_LABELS[comparison.required_level] ?? "—"}
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-4 text-center align-top">
                   {comparison.candidate_level != null
                     ? (LEVEL_LABELS[comparison.candidate_level] ?? "—")
                     : <span className="text-muted-foreground">Not assessed</span>}
                 </td>
-                <td className="px-4 py-3"><Confidence value={comparison.confidence} /></td>
-                <td className="px-4 py-3"><ResultBadge comparison={comparison} /></td>
+                <td className="px-4 py-4 align-top"><Confidence value={comparison.confidence} /></td>
+                <td className="px-4 py-4 align-top"><ResultBadge comparison={comparison} /></td>
               </tr>
             ))}
           </tbody>
