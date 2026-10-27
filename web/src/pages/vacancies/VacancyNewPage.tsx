@@ -50,8 +50,8 @@ export default function VacancyNewPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 mb-6">
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-6 flex items-center gap-2 border-b pb-5">
         <Link to="/vacancies" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -60,7 +60,7 @@ export default function VacancyNewPage() {
         <span className="text-sm font-medium">New Vacancy</span>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-7">
         <div className="space-y-1.5">
           <Label htmlFor="role_title">Role title <span className="text-destructive">*</span></Label>
           <Input id="role_title" placeholder="Senior Frontend Engineer" {...register("role_title", { required: true })} />
@@ -79,7 +79,7 @@ export default function VacancyNewPage() {
           ) : (
             <div className="space-y-2">
               {fields.map((field, index) => (
-                <div key={field.id} className="border rounded-lg p-3 space-y-2">
+                <div key={field.id} className="space-y-2 rounded-xl border bg-card p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{watch(`skills.${index}.skill_label`)}</span>
                     <button type="button" onClick={() => remove(index)} className="text-muted-foreground hover:text-destructive">
