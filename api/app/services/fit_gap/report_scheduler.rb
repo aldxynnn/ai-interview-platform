@@ -69,10 +69,9 @@ module FitGap
 
       report.reload
     rescue StandardError => e
-  mark_failed_if_current(report, lease_token, "Report generation could not be scheduled") if report && lease_token
-  Rails.logger.error("[N13] Report scheduling failed: #{e.class}: #{e.message}")
-  Rails.logger.error(e.backtrace.first(10).join("\n")) if e.backtrace
-  report
+      mark_failed_if_current(report, lease_token, "Report generation could not be scheduled") if report && lease_token
+      Rails.logger.error("[N13] Report scheduling failed: #{e.class}")
+      report
     end
 
     def self.input_fingerprint(portfolio:, vacancy:)

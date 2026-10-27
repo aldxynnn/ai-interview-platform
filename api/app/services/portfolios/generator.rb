@@ -238,13 +238,11 @@ module Portfolios
         else
           raw_id = raw["skill_id"]
           raise JSON::ParserError, "Skill ID must be a string or null" if raw_id.present? && !raw_id.is_a?(String)
-definition = if raw_id.present?
-               configured_definitions.find { |item| item.skill_id.present? && item.skill_id == raw_id } ||
-                 configured_definitions.find { |item| item.skill_id.blank? && item.skill_label.casecmp?(label.strip) }
-             else
-               configured_definitions.find { |item| item.skill_id.blank? && item.skill_label.casecmp?(label.strip) }
-             end
-
+          definition = if raw_id.present?
+                         configured_definitions.find { |item| item.skill_id == raw_id }
+                       else
+                         configured_definitions.find { |item| item.skill_id.blank? && item.skill_label.casecmp?(label.strip) }
+                       end
           raise JSON::ParserError, "Model returned an unknown configured skill" unless definition
           skill_id = definition.skill_id
           label = definition.skill_label

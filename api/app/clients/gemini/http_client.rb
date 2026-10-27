@@ -2,7 +2,7 @@
 
 module Gemini
   class HttpClient
-    BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
+    BASE_URL = 'https://generativelanguage.googleapis.com/v1'
 
     class ApiError < StandardError
       attr_reader :status, :body
