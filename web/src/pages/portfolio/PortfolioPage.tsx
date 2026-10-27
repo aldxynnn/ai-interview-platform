@@ -58,6 +58,14 @@ export default function PortfolioPage() {
     setOverrides((prev) => ({ ...prev, [skillId]: override }));
   };
 
+  const handleOverrideRemoved = (skillId: number) => {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      delete next[skillId];
+      return next;
+    });
+  };
+
   const handleRunFitGap = () => {
     if (!selectedVacancy || !portfolio) return;
     navigate(`/assessments/${id}/sessions/${sessionId}/fitgap/${selectedVacancy}`);
@@ -197,6 +205,7 @@ export default function PortfolioPage() {
                   skill={skill}
                   override={overrides[skill.id]}
                   onOverrideSaved={(o) => handleOverrideSaved(skill.id, o)}
+                  onOverrideRemoved={() => handleOverrideRemoved(skill.id)}
                 />
               ))}
           </div>
@@ -223,6 +232,7 @@ export default function PortfolioPage() {
                       skill={skill}
                       override={overrides[skill.id]}
                       onOverrideSaved={(o) => handleOverrideSaved(skill.id, o)}
+                      onOverrideRemoved={() => handleOverrideRemoved(skill.id)}
                     />
                   ))}
               </div>

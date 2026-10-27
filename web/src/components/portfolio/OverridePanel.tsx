@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import LevelBadge from "./LevelBadge";
 import { portfoliosApi } from "@/services/portfolios";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { parseLevel } from "@/utils/constants";
 import type { PortfolioSkill, AssessorOverride } from "@/types";
 
@@ -13,31 +13,51 @@ interface OverridePanelProps {
   skill: PortfolioSkill;
   existingOverride?: AssessorOverride;
   onSaved: (override: AssessorOverride) => void;
+  onRemoved?: () => void;
 }
 
-export default function OverridePanel({ skill, existingOverride, onSaved }: OverridePanelProps) {
+export default function OverridePanel({ skill, existingOverride, onSaved, onRemoved }: OverridePanelProps) {
   const [open, setOpen] = useState(false);
   const [overrideLevel, setOverrideLevel] = useState(existingOverride?.override_level ?? parseLevel(skill.ai_level));
   const [notes, setNotes] = useState(existingOverride?.assessor_notes ?? "");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const hasOverride = !!existingOverride;
 
   const handleSave = async () => {
     setSaving(true);
-    setSaveError(false);
+    setSaveError(null);
     try {
-      const res = await portfoliosApi.getOverride(skill.id, {
+      const res = await portfoliosApi.saveOverride(skill.id, {
         override_level: overrideLevel,
         assessor_notes: notes,
       });
       onSaved(res.data.override);
       setOpen(false);
     } catch {
-      setSaveError(true);
+      setSaveError("Failed to save override. Please try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setSaveError(null);
+    try {
+      await portfoliosApi.deleteOverride(skill.id);
+      if (onRemoved) {
+        onRemoved();
+      }
+      setOpen(false);
+      setOverrideLevel(parseLevel(skill.ai_level));
+      setNotes("");
+    } catch {
+      setSaveError("Failed to remove override. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -51,7 +71,9 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
               <span className="text-muted-foreground text-xs">AI</span>
               <span className="text-muted-foreground">→</span>
               <LevelBadge level={existingOverride!.override_level} size="sm" />
-              <span className="text-xs text-green-600 font-medium">You Overridden ✓</span>
+              <span className="text-xs text-green-700 bg-green-50 px-1.5 py-0.5 rounded font-medium border border-green-200">
+                Overridden ✓
+              </span>
             </div>
             <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
               <Pencil className="h-3 w-3 mr-1" /> Edit override
@@ -68,8 +90,26 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
 
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Override
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {hasOverride ? "Edit Override" : "Override Rating"}
+        </div>
+        {hasOverride && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-destructive hover:bg-destructive/10 h-7 px-2"
+            onClick={handleDelete}
+            disabled={deleting || saving}
+          >
+            {deleting ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Trash2 className="h-3 w-3 mr-1" />
+            )}
+            Revert to AI
+          </Button>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -78,23 +118,25 @@ export default function OverridePanel({ skill, existingOverride, onSaved }: Over
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`notes-${skill.id}`} className="text-sm">Notes (optional):</Label>
+        <Label htmlFor={`notes-${skill.id}`} className="text-sm">Assessor notes (optional):</Label>
         <Textarea
           id={`notes-${skill.id}`}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          placeholder="Add context for your override..."
+          placeholder="Add context for your override (e.g., candidate demonstrated deep architectural nuance in discussion)..."
         />
       </div>
 
       {saveError && (
-        <p className="text-xs text-destructive">Failed to save override. Please try again.</p>
+        <p className="text-xs text-destructive">{saveError}</p>
       )}
 
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
+      <div className="flex justify-end gap-2 pt-1">
+        <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={saving || deleting}>
+          Cancel
+        </Button>
+        <Button size="sm" onClick={handleSave} disabled={saving || deleting}>
           {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           Save override
         </Button>

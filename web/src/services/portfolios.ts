@@ -2,10 +2,21 @@ import api from "./api";
 import type { Portfolio, AssessorOverride, FitGapReport } from "@/types";
 
 export const portfoliosApi = {
+  // Alias saveOverride for clarity; keep getOverride for backward compatibility
+  saveOverride: (portfolioSkillId: number, data: { override_level: number; assessor_notes: string }) =>
+    api.post<{ override: AssessorOverride }>(`/portfolio_skills/${portfolioSkillId}/override`, {
+      override: data,
+    }),
+
   getOverride: (portfolioSkillId: number, data: { override_level: number; assessor_notes: string }) =>
     api.post<{ override: AssessorOverride }>(`/portfolio_skills/${portfolioSkillId}/override`, {
       override: data,
     }),
+
+  deleteOverride: (portfolioSkillId: number) =>
+    api.delete<{ message: string; portfolio_skill_id: number; ai_level: number }>(
+      `/portfolio_skills/${portfolioSkillId}/override`
+    ),
 
   triggerFitGap: (portfolioId: number, vacancyId: number) =>
     api.post<{ report: FitGapReport } | { status: string; message: string }>(`/portfolios/${portfolioId}/fitgap`, {
