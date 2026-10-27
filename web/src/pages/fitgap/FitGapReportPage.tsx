@@ -220,8 +220,8 @@ export default function FitGapReportPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between">
+    <div className="mx-auto max-w-6xl space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-5 border-b pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <Link
             to={`/assessments/${id}/sessions/${sessionId}/portfolio`}
@@ -230,15 +230,15 @@ export default function FitGapReportPage() {
             <ArrowLeft className="h-4 w-4" /> Back to candidate portfolio
           </Link>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Decision support</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Fit/gap analysis</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Assessment workspace / Decision support</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Fit/gap analysis</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Compare the candidate's documented evidence with the requirements for this role.
               Review the source evidence before making a hiring decision.
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="flex flex-wrap gap-2 sm:max-w-[22rem] sm:justify-end">
           <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerating || generating || requesting}>
             {regenerating || generating
               ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -327,13 +327,13 @@ export default function FitGapReportPage() {
 
       {report && report.skill_comparisons.length > 0 && (
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Skill comparison</CardTitle>
+          <CardHeader className="gap-2 pb-3 sm:pb-4">
+            <CardTitle className="text-base sm:text-lg">Skill comparison</CardTitle>
             <p className="text-sm text-muted-foreground">
               Each requirement is compared independently. “Not assessed” means the portfolio does not contain usable candidate evidence for that skill.
             </p>
           </CardHeader>
-          <CardContent className="px-4 pb-5 sm:px-6">
+          <CardContent className="px-3 pb-5 sm:px-6">
             <ComparisonTable comparisons={report.skill_comparisons} />
           </CardContent>
         </Card>
@@ -357,7 +357,7 @@ export default function FitGapReportPage() {
               <p className="mt-1 text-sm text-muted-foreground">AI-generated context is supplementary and should be checked against the structured comparison.</p>
             </div>
             <Card>
-              <CardContent className="space-y-3 p-5 sm:p-6">
+              <CardContent className="space-y-4 p-4 sm:p-6">
                 {report.culture_narrative && (
                   <div>
                     <h3 className="text-sm font-medium">Culture fit context</h3>
@@ -387,7 +387,7 @@ export default function FitGapReportPage() {
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">These skills were found during the interview and are not part of this vacancy's configured requirements.</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {portfolio.skills.filter((skill) => skill.is_discovered).map((skill) => (
                 <Card key={skill.id}>
                   <CardContent className="p-4">
@@ -405,7 +405,7 @@ export default function FitGapReportPage() {
         </>
       )}
 
-      <div className="rounded-lg bg-muted/40 p-4 text-xs leading-5 text-muted-foreground">
+      <div className="rounded-xl border bg-muted/40 p-4 text-xs leading-5 text-muted-foreground sm:p-5">
         <div className="flex items-start gap-2">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <p>Decision support only. A skill gap or missing assessment evidence is not, by itself, a hiring decision. Review candidate-authored evidence and assessor overrides before drawing conclusions.</p>
