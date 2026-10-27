@@ -4,7 +4,7 @@ Tanggal dokumentasi: 27 Oktober 2026. Branch: `feat/fit-gap-trustworthy-revamp`.
 
 ## CI
 
-Run CI yang tercatat sukses: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40450719702. Workflow menjalankan API RSpec, migration rollback/re-apply, Web Vitest/component tests, dan production build.
+Run CI yang tercatat sukses: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40452970096. Workflow menjalankan API RSpec, migration rollback/re-apply, Web Vitest/component tests, dan production build.
 
 ## AI Verification Moment
 
