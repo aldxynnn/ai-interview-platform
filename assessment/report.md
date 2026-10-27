@@ -75,7 +75,7 @@ Acceptance criteria yang digunakan untuk review:
 
 ## Bukti pengujian
 
-- **CI final yang tercatat sukses:** https://github.com/aldxynnn/ai-interview-platform/actions/runs/40450719702 — API RSpec dan migration rollback/re-apply, Web Vitest, serta production build.
+- **CI final yang tercatat sukses:** https://github.com/aldxynnn/ai-interview-platform/actions/runs/40452970096 — API RSpec dan migration rollback/re-apply, Web Vitest, serta production build.
 - **Seeded fault:** commit https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316 sengaja menggunakan `Vacancy.unscoped.find_by`; CI gagal sesuai harapan karena cross-tenant regression test mendeteksi bypass (19 examples, 1 failure): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272.
 - **Recovery:** commit https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8e3f024ec8a8c78a5818d memulihkan tenant scope; CI recovery lulus: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460. Fault berada di branch scratch, bukan branch implementasi.
 - Catatan teknis: [verification-notes.md](verification-notes.md).
@@ -90,7 +90,7 @@ Transcript wawancara dapat memuat data pribadi. Sebelum penggunaan produksi, org
 
 - Branch implementasi: https://github.com/aldxynnn/ai-interview-platform/tree/feat/fit-gap-trustworthy-revamp
 - Pull request siap direview: https://github.com/aldxynnn/ai-interview-platform/pull/8
-- CI: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40450719702
+- CI: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40452970096
 - Screenshot UI dan video walkthrough 3–5 menit telah disiapkan oleh submitter untuk materi demo submission.
 
 Tanggal tenggat yang tertulis pada brief adalah Rabu, 19 Agustus 2026 pukul 13.00 WIB.
