@@ -42,10 +42,10 @@ export default function AssessmentListPage() {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Assessments</h1>
-        <Button onClick={() => navigate("/assessments/new")}>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Workspace</p><h1 className="text-2xl font-semibold tracking-tight">Assessments</h1><p className="text-sm text-muted-foreground">Manage interviews and follow candidate progress.</p></div>
+        <Button className="w-full sm:w-auto" onClick={() => navigate("/assessments/new")}>
           <Plus className="h-4 w-4 mr-1.5" /> New Assessment
         </Button>
       </div>
@@ -61,7 +61,7 @@ export default function AssessmentListPage() {
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
       ) : assessments.length === 0 ? (
-        <div className="border rounded-lg p-12 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl border border-dashed bg-card px-5 py-12 text-center text-sm text-muted-foreground sm:px-10">
           <p className="mb-3">No assessments yet.</p>
           <Button variant="outline" onClick={() => navigate("/assessments/new")}>
             <Plus className="h-4 w-4 mr-1.5" /> Create your first assessment
@@ -72,13 +72,13 @@ export default function AssessmentListPage() {
           {assessments.map((a) => (
             <Card
               key={a.id}
-              className="cursor-pointer hover:border-primary/40 transition-colors"
+              className="cursor-pointer rounded-xl shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => navigate(`/assessments/${a.id}/invite`)}
             >
-              <CardContent className="py-3 px-4 flex items-center justify-between">
+              <CardContent className="flex items-center justify-between gap-4 px-4 py-4 sm:px-5">
                 <div>
-                  <p className="font-medium text-sm">{a.name}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                  <p className="break-words text-sm font-semibold">{a.name}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {a.time_limit_min} min
