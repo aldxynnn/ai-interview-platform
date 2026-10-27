@@ -199,7 +199,7 @@ export default function InterviewPage() {
   if (candidateInfoError) {
     return (
       <div className="mx-auto max-w-xl space-y-5 px-4 py-12">
-        <div className="flex flex-col items-center gap-3 rounded-xl border p-8 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-8 text-center shadow-sm">
           <AlertCircle className="h-9 w-9 text-destructive" aria-hidden="true" />
           <h1 className="text-xl font-semibold">We couldn't verify your invitation</h1>
           <p role="alert" className="max-w-md text-sm leading-6 text-muted-foreground">
@@ -219,7 +219,7 @@ export default function InterviewPage() {
   // ── State A: Pre-start ──────────────────────────────────────────────────
   if (interviewState === "idle") {
     return (
-      <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
+      <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
         <div className="text-center space-y-1">
           <h1 className="text-xl font-semibold">{candidateInfo?.role_title ?? "AI Interview"}</h1>
           {candidateInfo && (
@@ -231,7 +231,7 @@ export default function InterviewPage() {
 
         {!hardwareCheckDone ? (
           <div className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-1.5 text-muted-foreground">
+            <div className="space-y-1.5 rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
               <p>• This is a voice interview. Make sure you're in a quiet place.</p>
               <p>• The AI will ask follow-up questions — there are no scripts.</p>
               <p>• The session will last up to {candidateInfo?.time_limit_min ?? "—"} minutes.</p>
@@ -241,7 +241,7 @@ export default function InterviewPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+            <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
               <CheckCircle className="h-4 w-4 shrink-0" />
               <span>Hardware checks passed. You're ready to start.</span>
             </div>
@@ -258,7 +258,7 @@ export default function InterviewPage() {
   // ── State F: Complete ───────────────────────────────────────────────────
   if (interviewState === "complete") {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+      <div className="mx-auto w-full max-w-2xl space-y-4 px-4 py-16 text-center sm:px-6">
         <div className="text-4xl">✅</div>
         <h2 className="text-xl font-semibold">Interview Complete</h2>
         <p className="text-sm text-muted-foreground">
@@ -275,9 +275,9 @@ export default function InterviewPage() {
   const candidateSpeaking = speaker === "candidate";
 
   return (
-    <div className="max-w-xl mx-auto px-4 flex flex-col h-full">
+    <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-4 sm:px-6">
       {/* Top bar */}
-      <div className="flex items-center justify-between py-3 border-b sticky top-12 bg-white z-10">
+      <div className="sticky top-14 z-10 flex items-center justify-between gap-3 border-b bg-background/95 py-3 backdrop-blur">
         <span className="text-sm font-medium">AI Interview</span>
         {candidateInfo && (
           <InterviewTimer
