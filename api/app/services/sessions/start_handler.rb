@@ -9,6 +9,14 @@ module Sessions
     end
 
     def call
+      # Hard guard: do not re-activate ended or failed sessions
+      if @session.ended? || @session.status == 'failed'
+        Rails.logger.warn("[N5/StartHandler] Attempted to re-activate terminated session #{@session.id} (status=#{@session.status})")
+        return @session
+      end
+
+      return @session if @session.active?
+
       ActiveRecord::Base.transaction do
         @session.update!(status: 'active', started_at: Time.current)
         initialize_coverage_maps
@@ -22,12 +30,19 @@ module Sessions
     private
 
     def publish_status_update
-      redis = ::Redis.new(url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/1'))
-      redis.publish("coverage:#{@session.id}", { type: 'session_status', status: @session.status, end_reason: nil }.to_json)
+      Sidekiq.redis do |conn|
+        conn.publish("coverage:#{@session.id}", { type: 'session_status', status: @session.status, end_reason: nil }.to_json)
+      end
+    rescue => _e
+      # Fallback to direct redis if Sidekiq pool is unavailable (e.g. lightweight test env)
+      begin
+        redis = ::Redis.new(url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/1'))
+        redis.publish("coverage:#{@session.id}", { type: 'session_status', status: @session.status, end_reason: nil }.to_json)
+      ensure
+        redis&.close
+      end
     rescue => e
       Rails.logger.error("[StartHandler] Failed to publish status update: #{e.message}")
-    ensure
-      redis&.close
     end
 
     def initialize_coverage_maps

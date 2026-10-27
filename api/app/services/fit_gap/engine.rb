@@ -58,21 +58,26 @@ module FitGap
         {
           skill_label:     label,
           skill_id:        vacancy_skill.skill_id,
-          candidate_level: candidate_level,
           expected_level:  expected_level,
-          result:          result,
+          required_level:  expected_level, # for frontend backward-compatibility
+          candidate_level: candidate_level,
           delta:           delta,
-          confidence:      portfolio_skill&.dig(:confidence)
+          result:          result,
+          is_override:     portfolio_skill ? portfolio_skill[:overridden] : false,
+          assessor_notes:  portfolio_skill ? portfolio_skill[:assessor_notes] : nil
         }
       end
 
       comparisons
     end
 
-    # Returns portfolio skills with overrides applied.
     def effective_portfolio_skills
-      @portfolio.portfolio_skills.includes(:assessor_override).map do |skill|
-        override = skill.assessor_override
+      overrides = AssessorOverride.where(
+        portfolio_skill_id: @portfolio.portfolio_skills.select(:id)
+      ).index_by(&:portfolio_skill_id)
+
+      @portfolio.portfolio_skills.map do |skill|
+        override = overrides[skill.id]
         {
           id:              skill.id,
           skill_id:        skill.skill_id,
@@ -80,7 +85,8 @@ module FitGap
           ai_level:        skill.ai_level,
           effective_level: override ? override.override_level : skill.ai_level,
           confidence:      skill.ai_confidence,
-          overridden:      override.present?
+          overridden:      override.present?,
+          assessor_notes:  override&.assessor_notes
         }
       end
     end
@@ -100,12 +106,30 @@ module FitGap
 
       begin
         response = @gemini_client.generate_content(prompt, temperature: 0.4)
-        data = response.is_a?(Hash) ? response : JSON.parse(response)
-        { culture: data['culture_narrative'], overall: data['overall_narrative'] }
+        data = parse_json_response(response)
+        {
+          culture: data['culture_narrative'] || data['culture'],
+          overall: data['overall_narrative'] || data['overall']
+        }
       rescue => e
         Rails.logger.error("[N13] Narrative generation failed: #{e.message}")
-        { culture: nil, overall: generate_fallback_narrative(skill_comparisons) }
+        {
+          culture: "Automated culture narrative unavailable: #{e.message}",
+          overall: generate_fallback_narrative(skill_comparisons)
+        }
       end
+    end
+
+    def parse_json_response(response)
+      return response if response.is_a?(Hash)
+
+      # Resilient JSON extraction: clean markdown fences if present
+      cleaned = response.to_s.strip.sub(/\A```(?:json)?\s*/i, '').sub(/\s*```\z/i, '').strip
+      if (match = cleaned.match(/\{[\s\S]*\}/))
+        cleaned = match[0]
+      end
+
+      JSON.parse(cleaned)
     end
 
     def build_narrative_prompt(gaps, matches, exceeds, not_assessed)
@@ -143,7 +167,7 @@ module FitGap
       matches = comparisons.count { |c| c[:result] == 'match' }
       exceeds = comparisons.count { |c| c[:result] == 'exceed' }
 
-      "Candidate shows #{matches} skill matches, #{exceeds} exceeds, and #{gaps} gaps against role requirements."
+      "Candidate matches #{matches} skills, exceeds in #{exceeds}, with #{gaps} skill gaps identified against role requirements."
     end
   end
 end

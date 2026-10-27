@@ -148,34 +148,65 @@ module Portfolios
     end
 
     def save_skills(portfolio, response)
-      data = response.is_a?(Hash) ? response : JSON.parse(response)
+      data = parse_response_data(response)
 
-      # Destroy existing skills (idempotent regeneration)
-      portfolio.portfolio_skills.destroy_all
+      ActiveRecord::Base.transaction do
+        # Destroy existing skills (idempotent regeneration) inside transaction
+        portfolio.portfolio_skills.destroy_all
 
-      (data['configured_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           skill_data['skill_id'],
-          skill_label:        skill_data['skill_label'],
-          is_discovered:      false,
-          ai_level:           skill_data['level'].to_i.clamp(1, 5),
-          ai_confidence:      skill_data['confidence'],
-          evidence:           Array(skill_data['evidence']).first(3),
-          competency_summary: skill_data['competency_summary']
-        )
+        (data['configured_skills'] || []).each do |skill_data|
+          level = skill_data['level'].to_i
+          level = 1 if level < 1 || level > 5
+          conf = normalize_confidence(skill_data['confidence'])
+          summary = skill_data['competency_summary'].presence || "Skill evaluated during session."
+
+          portfolio.portfolio_skills.create!(
+            skill_id:           skill_data['skill_id'],
+            skill_label:        skill_data['skill_label'].presence || "Configured Skill",
+            is_discovered:      false,
+            ai_level:           level,
+            ai_confidence:      conf,
+            evidence:           Array(skill_data['evidence']).map(&:to_s).first(3),
+            competency_summary: summary
+          )
+        end
+
+        (data['discovered_skills'] || []).each do |skill_data|
+          level = skill_data['level'].to_i
+          level = 1 if level < 1 || level > 5
+          conf = normalize_confidence(skill_data['confidence'])
+          summary = skill_data['competency_summary'].presence || "Discovered skill noted during interview."
+
+          portfolio.portfolio_skills.create!(
+            skill_id:           nil,
+            skill_label:        skill_data['skill_label'].presence || "Discovered Skill",
+            is_discovered:      true,
+            ai_level:           level,
+            ai_confidence:      conf,
+            evidence:           Array(skill_data['evidence']).map(&:to_s).first(3),
+            competency_summary: summary
+          )
+        end
+      end
+    end
+
+    def parse_response_data(response)
+      return response if response.is_a?(Hash)
+
+      raw = response.to_s.strip
+      cleaned = raw.sub(/\A```(?:json)?\s*/i, '').sub(/\s*```\z/i, '').strip
+
+      # Extract JSON object if model outputs extra preamble/postscript
+      if (match = cleaned.match(/\{[\s\S]*\}/))
+        cleaned = match[0]
       end
 
-      (data['discovered_skills'] || []).each do |skill_data|
-        portfolio.portfolio_skills.create!(
-          skill_id:           nil,
-          skill_label:        skill_data['skill_label'],
-          is_discovered:      true,
-          ai_level:           skill_data['level'].to_i.clamp(1, 5),
-          ai_confidence:      skill_data['confidence'],
-          evidence:           Array(skill_data['evidence']).first(3),
-          competency_summary: skill_data['competency_summary']
-        )
-      end
+      JSON.parse(cleaned)
+    end
+
+    def normalize_confidence(confidence)
+      conf = confidence.to_s.downcase.strip
+      %w[high medium low].include?(conf) ? conf : 'low'
     end
   end
 end

@@ -56,6 +56,13 @@ class AudioWebSocketMiddleware
     end
 
     state.session = session
+
+    if session.ended?
+      browser_ws.send({ type: 'session_ended', reason: session.end_reason || 'all_covered', message: 'This interview has already concluded.' }.to_json)
+      browser_ws.close
+      return
+    end
+
     connect_to_gemini(browser_ws, state)
   rescue StandardError => e
     Rails.logger.error("[AudioWS] Exception in on:open: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}")
