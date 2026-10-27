@@ -5,6 +5,7 @@ on:
     branches:
       - 'take-home/**'
       - 'scratch/**'
+      - 'feat/**'
   pull_request:
     branches:
       - main
