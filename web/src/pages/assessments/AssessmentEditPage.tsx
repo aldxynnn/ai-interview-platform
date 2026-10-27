@@ -99,8 +99,8 @@ export default function AssessmentEditPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 mb-6">
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-6 flex items-center gap-2 border-b pb-5">
         <Link to="/assessments" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -109,7 +109,7 @@ export default function AssessmentEditPage() {
         <span className="text-sm font-medium">Edit Assessment</span>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-7">
         <div className="space-y-1.5">
           <Label htmlFor="name">Role title <span className="text-destructive">*</span></Label>
           <Input id="name" {...register("name", { required: true })} />
