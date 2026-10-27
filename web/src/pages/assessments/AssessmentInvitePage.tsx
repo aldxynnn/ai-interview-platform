@@ -38,13 +38,13 @@ function SessionRow({
   const displayName = session.candidate_name || `Candidate ${index}`;
 
   return (
-    <div className="flex items-center justify-between py-3 px-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
         <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted text-xs font-medium text-muted-foreground">
           {index}
         </div>
         <div className="space-y-0.5">
-          <div className="text-sm font-medium">{displayName}</div>
+          <div className="break-words text-sm font-medium">{displayName}</div>
           {session.started_at && (
             <div className="text-xs text-muted-foreground">
               {new Date(session.started_at).toLocaleDateString()}
@@ -53,7 +53,7 @@ function SessionRow({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {isPending && (
           <span className="flex items-center gap-1 text-xs text-amber-600">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
@@ -190,9 +190,9 @@ export default function AssessmentInvitePage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
+      <div className="mx-auto max-w-4xl space-y-6 sm:space-y-8">
+        <Skeleton className="h-8 w-64 max-w-full" />
+        <Skeleton className="h-32 w-full rounded-xl" />
         <Skeleton className="h-48 w-full" />
       </div>
     );
@@ -255,7 +255,7 @@ export default function AssessmentInvitePage() {
       {newSession && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-4 space-y-2">
-            <p className="text-sm font-medium">
+            <p className="break-words text-sm font-medium">
               {newSession.candidate_name
                 ? <>Link for <span className="font-semibold">{newSession.candidate_name}</span> ready — share with your candidate:</>
                 : <>New invite link ready — share with your candidate:</>}
@@ -293,7 +293,7 @@ export default function AssessmentInvitePage() {
           <div className="border rounded-lg p-10 text-center space-y-3">
             <UserRound className="h-8 w-8 text-muted-foreground mx-auto" />
             <div>
-              <p className="text-sm font-medium">No candidates yet</p>
+              <p className="break-words text-sm font-medium">No candidates yet</p>
               <p className="text-xs text-muted-foreground mt-1">
                 Click "Invite Candidate" to generate an interview link.
               </p>
