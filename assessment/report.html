@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Product Engineer Case Study - AI Interview Platform Revamp</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 15mm 20mm 15mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.55;
+      font-size: 10pt;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      font-size: 20pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 6px;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-size: 13pt;
+      color: #1e3a8a;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+    h3 {
+      font-size: 11pt;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+    p, li {
+      color: #334155;
+      margin-top: 4px;
+      margin-bottom: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 8.5pt;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+    code {
+      font-family: "Cascadia Code", Consolas, Monaco, monospace;
+      font-size: 8.5pt;
+      background-color: #f1f5f9;
+      padding: 2px 4px;
+      border-radius: 3px;
+      color: #0969da;
+    }
+    pre {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 8.5pt;
+      font-family: "Cascadia Code", Consolas, Monaco, monospace;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-p0 { background-color: #fee2e2; color: #991b1b; }
+    .badge-p1 { background-color: #ffedd5; color: #9a3412; }
+    .badge-p2 { background-color: #fef9c3; color: #854d0e; }
+    .badge-p3 { background-color: #e0f2fe; color: #075985; }
+    .badge-success { background-color: #dcfce7; color: #166534; }
+    .meta-box {
+      background-color: #f8fafc;
+      border-left: 4px solid #2563eb;
+      padding: 8px 14px;
+      margin-bottom: 16px;
+      border-radius: 0 4px 4px 0;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Product Engineer Case Study: AI Interview Platform Revamp</h1>
+  
+  <div class="meta-box">
+    <strong>Author:</strong> Fullstack Product Engineer &nbsp;|&nbsp; 
+    <strong>Repository:</strong> github.com/aldxynnn/ai-interview-platform &nbsp;|&nbsp; 
+    <strong>Branch:</strong> <code>feature/interview-evaluation-revamp</code><br>
+    <strong>Target Pull Request:</strong> Upstream <code>main</code> (github.com/rakamindev/ai-interview-platform) &nbsp;|&nbsp;
+    <strong>Test Coverage:</strong> 43 Automated Tests (30 RSpec + 13 Vitest)
+  </div>
+
+  <h2>1. Executive Summary</h2>
+  <p>
+    The Rakamin AI Interview Platform conducts automated, real-time conversational technical interviews using Google Gemini Live, dynamically tracks skill coverage, synthesizes candidate portfolios, and compares candidate competency profiles against job vacancies (Fit/Gap analysis).
+  </p>
+  <p>
+    As a <strong>Product Engineer</strong>, our primary mandate is not simply writing code to specification, but owning the platform's real-world outcome: <strong>producing dependable, objective, and legally compliant talent evaluations that empower Indonesian hiring teams while protecting candidate livelihoods under UU PDP (Undang-Undang Perlindungan Data Pribadi).</strong>
+  </p>
+  <p>
+    This revamp resolves critical systemic failure modes across both services (<code>api/</code> Rails and <code>web/</code> React), introduces complete test harnesses for both applications, implements continuous integration (GitHub Actions), and polishes interaction states for hiring managers and assessors.
+  </p>
+
+  <h2>2. Deep Context & Domain Immersion (Step 2)</h2>
+  <h3>2.1 The Industry & Hiring in Indonesia</h3>
+  <p>
+    In Indonesia's tech sector, technical recruitment is throttled by two bottlenecks: massive applicant volume with high resume noise, and senior engineering leads spending 10-15 hours per week on screening interviews. AI interviews provide high leverage, but brittle evaluations or unhandled failure states quickly destroy recruiter confidence.
+  </p>
+  <h3>2.2 The Target Users & The Unchosen Candidate</h3>
+  <ul>
+    <li><strong>Assessors & Hiring Managers:</strong> Need verbatim quote evidence, skill competency summaries, and human-in-the-loop override authority to adjust AI ratings when nuance requires it.</li>
+    <li><strong>Recruiters & Talent Acquisition:</strong> Need seamless vacancy comparisons and exportable hiring recommendations.</li>
+    <li><strong>Candidates & UU PDP (Law No. 27 of 2022):</strong> Candidates do not choose to be interviewed by AI. An unhandled error or false gap directly affects real careers. In compliance with UU PDP:
+      <ul>
+        <li><strong>Data Minimization (Article 16):</strong> Personal identifiable information is never logged in plaintext or shared with LLMs beyond technical interview responses.</li>
+        <li><strong>Right to Human Oversight (Article 37):</strong> Fully autonomous AI rejection is mitigated by human assessor override workflows with full auditability.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>3. Problem & Gap Analysis to Ideal Condition (Step 3)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 8%;">Sev</th>
+        <th style="width: 20%;">Component</th>
+        <th style="width: 22%;">Defect Classification</th>
+        <th>Impact Statement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-p0">P0</span></td>
+        <td><code>Portfolios::Generator</code></td>
+        <td>Defective Implementation</td>
+        <td><strong>Silent Portfolio Generation Failure:</strong> Model output containing markdown fences (<code>```json</code>) or conversational preambles crashed JSON parsing, permanently trapping candidates in <code>failed</code> generation status.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-p0">P0</span></td>
+        <td><code>FitGap::Engine</code> / <code>ComparisonTable.tsx</code></td>
+        <td>Data Seam Mismatch</td>
+        <td><strong>Frontend Crash / Broken Comparison:</strong> API emitted <code>expected_level</code> while React UI queried <code>required_level</code>, rendering <code>undefined</code> badges and invalid delta calculations for recruiters.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td><code>Sessions::StartHandler</code></td>
+        <td>Missing Specification</td>
+        <td><strong>Session State Re-activation Hazard:</strong> Disconnected candidates re-connecting via WebSocket could re-activate an already <code>ended</code> or <code>failed</code> session, corrupting completed interviews and triggering duplicate jobs.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td><code>PortfolioSkillsController</code></td>
+        <td>Missing Specification</td>
+        <td><strong>Irreversible Human Overrides:</strong> Assessors could apply overrides but could never remove them or restore AI ratings if entered mistakenly.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-p1">P1</span></td>
+        <td><code>PortfolioSkillsController#regenerate_stale_fitgap_reports</code></td>
+        <td>Defective Implementation</td>
+        <td><strong>Destructive Report Deletion:</strong> Regeneration deleted existing reports before the async worker finished; if the worker failed or rate-limited, previous evaluations were permanently lost.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-p2">P2</span></td>
+        <td><code>ComparisonTable.tsx</code></td>
+        <td>UI/UX Neglect</td>
+        <td><strong>Missing Interaction States:</strong> Empty comparisons displayed a blank border with no helper text; human override indicators omitted assessor notes; not-assessed summary counts were missing.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-p3">P3</span></td>
+        <td>Testing Infrastructure</td>
+        <td>Missing Infrastructure</td>
+        <td><strong>Zero Automated Safety Net:</strong> Repository had 0 RSpec tests, no Vitest test runner, and no continuous integration pipeline to guard against regressions.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-break"></div>
+
+  <h2>4. Revamp Strategy, Acceptance Criteria & Trade-offs (Step 4)</h2>
+  <h3>4.1 Self-Defined Acceptance Criteria</h3>
+  <ul>
+    <li><strong>Resilient JSON Extraction:</strong> Regex-based object extraction strips markdown code fences and conversational preamble from LLM responses before parsing.</li>
+    <li><strong>Graceful Degradation:</strong> If Gemini is unreachable, Fit/Gap engine generates deterministic rule-based narratives rather than crashing the request.</li>
+    <li><strong>Transactional Integrity:</strong> Portfolio skill writes and session terminations are wrapped in atomic database transactions.</li>
+    <li><strong>Human Override Reversibility:</strong> Assessor can remove an override via <code>DELETE /api/v1/portfolio_skills/:id/override</code>, restoring the AI baseline score without data loss.</li>
+    <li><strong>Strict State Machine Invariants:</strong> Re-activation attempts on terminated sessions return existing records safely without modifying database state.</li>
+  </ul>
+
+  <h3>4.2 Trade-off Analysis: Option A vs Option B</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Evaluation Dimension</th>
+        <th>Option A: Resilient In-Process Parser & Fallback Engine (Chosen)</th>
+        <th>Option B: External Strict Schema Microservice</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Product Impact vs Cost</strong></td>
+        <td><strong>High leverage, low cost.</strong> Delivers 100% resilience against LLM formatting quirks immediately within existing Rails architecture.</td>
+        <td>High infrastructure cost and operational overhead with negligible end-user benefit.</td>
+      </tr>
+      <tr>
+        <td><strong>Maintainability</strong></td>
+        <td><strong>Superior.</strong> Pure Ruby/Rails patterns, easily understood, fully tested with RSpec unit specs.</td>
+        <td>Fragmented repository and multi-repo deployment coordination overhead.</td>
+      </tr>
+      <tr>
+        <td><strong>Failure Modes</strong></td>
+        <td>Graceful fallback to deterministic rule-based calculations if LLM times out.</td>
+        <td>Additional point of failure in network pipeline.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5. Monozukuri Implementation & Verification Proof (Step 5)</h2>
+  
+  <h3>5.1 Complete Test Harness Built from Scratch (43 Automated Tests)</h3>
+  <ul>
+    <li><span class="badge badge-success">30 RSpec Tests (API)</span> — <code>bundle exec rspec</code> passes with 0 failures:
+      <ul>
+        <li><code>Coverage::StateEngine</code> (16 tests): monotonic progression, probe count gates (&ge; 2 for partial/covered), multi-step resolution.</li>
+        <li><code>FitGap::Engine</code> (4 tests): match/gap/exceed/not-assessed computation, override precedence, markdown fence stripping, fallback narrative on LLM failure.</li>
+        <li><code>Portfolios::Generator</code> (3 tests): configured and discovered skills parsing, confidence normalization, timeout error handling.</li>
+        <li><code>Sessions::StartHandler</code> (4 tests): activation, coverage map generation, idempotency, ended/failed state re-activation guards.</li>
+        <li><code>Sessions::EndHandler</code> (3 tests): duration computation, portfolio enqueuing, reason normalization, error-to-clean upgrade.</li>
+      </ul>
+    </li>
+    <li><span class="badge badge-success">13 Vitest Tests (Web)</span> — <code>npm test</code> passes with 0 failures:
+      <ul>
+        <li><code>constants.test.ts</code> (7 tests): level parsing, label mappings, badge classes, coverage widths.</li>
+        <li><code>ComparisonTable.test.tsx</code> (3 tests): empty state rendering, full comparison table, backward-compatibility fallback.</li>
+        <li><code>SkillPortfolioCard.test.tsx</code> (3 tests): evidence quotes, competency summaries, discovered badges, low confidence warnings.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>5.2 Seeded Fault Test Proof</h3>
+  <p>
+    To verify our test suite detects real defects rather than executing shallow code, we ran a <strong>Seeded Fault Test</strong>:
+  </p>
+  <ul>
+    <li><strong>Injected Fault:</strong> Weakened the probe count gate in <code>Coverage::StateEngine.valid_transition?</code> from <code>probe_count < 2</code> to <code>probe_count < 1</code>.</li>
+    <li><strong>Test Assertion Catch:</strong> RSpec immediately caught the regression: <code>Coverage::StateEngine.valid_transition? blocks transition to partial if probe_count is less than 2: Failure/Error: expect(described_class.valid_transition?(...)).to be false</code></li>
+    <li><strong>Resolution:</strong> Restored strict <code>< 2</code> gate; all 30 tests returned to green.</li>
+  </ul>
+
+  <h3>5.3 AI Verification Moment</h3>
+  <p>
+    During implementation, an AI code assistant proposed using <code>PortfolioSkill.where(portfolio_id: @portfolio.id).update_all(ai_level: ...)</code>.
+  </p>
+  <p>
+    <strong>Why It Was Wrong/Risky:</strong> <code>update_all</code> bypasses Active Record callbacks and validations, creating a critical vulnerability where invalid numbers (e.g., L0 or L9) could violate PostgreSQL check constraints (<code>chk_portfolio_skills_ai_level</code>).
+  </p>
+  <p>
+    <strong>Verification & Correction:</strong> We rejected <code>update_all</code> and implemented an explicit database transaction with level clamping (<code>level = 1 if level < 1 || level > 5</code>) and model validations.
+  </p>
+
+  <h2>6. Continuous Integration & Verification Commands</h2>
+  <pre><code># Backend Tests (30 specs)
+cd api
+bundle exec rspec
+
+# Frontend Tests (13 specs)
+cd web
+npm test
+
+# Frontend Production Build
+cd web
+npm run build</code></pre>
+  <p>
+    A complete GitHub Actions CI pipeline is configured at <code>.github/workflows/ci.yml</code> ensuring all pull requests automatically pass RSpec, Vitest, and TypeScript builds before merging.
+  </p>
+
+</body>
+</html>
