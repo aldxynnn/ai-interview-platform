@@ -1,7 +1,7 @@
 # Rakamin Take-home — Product Impact & Fit/Gap Reliability
 
 Tanggal: 26 Oktober 2026  
-Branch final untuk PR: `take-home/fitgap-reliability-final`  
+Branch implementasi dan review: `feat/fit-gap-trustworthy-revamp`  
 Upstream base yang diverifikasi: `b836d02f45c6300b238b98ad50e66ead706723b6`
 
 > **Status implementasi: automated checks lulus; manual product verification masih terbuka.** CI pada branch final lulus, termasuk privacy regression test, pada run 40264168296. Seeded-fault failure dan recovery pass telah dibuktikan. Browser/responsive screenshot, clean-clone setup, dan Gemini live belum diverifikasi. PR upstream belum berhasil dibuat melalui integrasi karena akses GitHub API ditolak HTTP 403; branch final disiapkan terpisah untuk PR. Video belum direkam.
@@ -72,9 +72,9 @@ Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat r
 
 ## 9. Submission dan tindak lanjut
 
-- Branch final (berbasis upstream base, dengan implementation snapshot dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/take-home/fitgap-reliability-final
+- Branch implementasi (berbasis main fork, dengan code, tests, dan dokumentasi verifikasi): https://github.com/aldxynnn/ai-interview-platform/tree/feat/fit-gap-trustworthy-revamp
 - CI final branch lulus (20 RSpec examples, Web Vitest + production build, migration rollback/re-apply): https://github.com/aldxynnn/ai-interview-platform/actions/runs/40264168296
-- PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch final yang disiapkan untuk PR: `take-home/fitgap-reliability-final`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
+- PR upstream: integrasi GitHub menolak create PR dengan HTTP 403 (Resource not accessible by integration). Branch implementasi yang disiapkan untuk PR: `feat/fit-gap-trustworthy-revamp`; jika API tetap menolak, buat PR manual ke `rakamindev/ai-interview-platform` base `main`.
 - Video walkthrough 3–5 menit: belum direkam/di-host.
 - UI screenshot: belum ada karena browser smoke test belum dilakukan.
 - Local setup: ikuti `api/README.md` dan `web/README.md`; belum diverifikasi dari clone bersih.
@@ -83,5 +83,5 @@ Transcript wawancara dapat memuat data pribadi. Provider exception bisa memuat r
 
 1. Jalankan browser smoke test desktop/mobile, periksa console/network, keyboard/focus, empty/error/long-text states; ambil screenshot aktual.
 2. Verifikasi local setup dari clone bersih dan failure path Gemini dengan stub; live integration jika kredensial tersedia.
-3. Buat PR dari branch final `take-home/fitgap-reliability-final` ke upstream `main`; integrasi create PR ditolak HTTP 403.
+3. Buat PR dari branch final `feat/fit-gap-trustworthy-revamp` ke upstream `main`; integrasi create PR ditolak HTTP 403.
 4. Rekam dan host video walkthrough 3–5 menit; tambahkan link video pada PR/submission.
