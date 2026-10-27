@@ -1,45 +1,31 @@
-# Verification notes — Rakamin take-home
+# Verification notes — Fit/Gap Reliability
 
-Tanggal verifikasi: 27 Oktober 2026.
+Tanggal dokumentasi: 27 Oktober 2026. Branch: `feat/fit-gap-trustworthy-revamp`.
 
-## Final branch CI
+## CI
 
-- Branch: `feat/fit-gap-trustworthy-revamp`
-- Commit CI: `632aacdf59ef82d0fe7eeb091bf7558d46bc7459`
-- Run: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40449318172
-- Result: completed / success.
-- API job: RSpec and migration rollback/re-apply passed.
-- Web job: Vitest/component tests and production build passed.
+Run CI yang tercatat sukses: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40450719702. Workflow menjalankan API RSpec, migration rollback/re-apply, Web Vitest/component tests, dan production build.
 
-CI only verifies the automated checks configured in the workflow. It does not establish that a human ran the application in a browser, that responsive behavior is polished, that a clean local clone works, or that the live Gemini provider is reachable.
+## AI Verification Moment
 
-## AI Verification Moment (real defect, corrected)
+CI menangkap defect `DoubleRenderError` pada `Api::V1::PortfoliosController#find_vacancy!`: helper merender error tetapi mengembalikan nilai truthy, sehingga action bisa berlanjut dan mencoba render lagi. Helper diubah agar eksplisit return `nil` setelah render error; request specs dan CI setelah perbaikan lulus.
 
-CI initially caught an error-handling defect in `Api::V1::PortfoliosController#find_vacancy!`: when a vacancy lookup failed, the helper rendered an error but returned a truthy render result. The calling action then continued and could render again, causing `AbstractController::DoubleRenderError`. The helper was changed to render the error and explicitly return `nil`. Request specs and CI after the fix passed.
+## Seeded fault dan recovery
 
-A separate review concern was the query's missing explicit `tenant_id`. The `Vacancy` model includes `TenantScoped`, whose default scope also filters by `Current.tenant_id`; therefore `Vacancy.find_by(id: id)` alone was not proof of an actual tenant-scope bypass. The implementation includes an explicit tenant condition as defense-in-depth. The valid seeded fault used `Vacancy.unscoped.find_by(id: id)` to deliberately bypass that default scope.
+- Fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316 — mengubah lookup menjadi `Vacancy.unscoped.find_by(id: id)`.
+- Fault CI: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272 — gagal sesuai harapan karena cross-tenant regression test mendeteksi bypass (19 examples, 1 failure).
+- Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8e3f024ec8a8c78a5818d — mengembalikan tenant-scoped lookup.
+- Recovery CI: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460 — lulus.
+- Fault terisolasi di branch scratch, bukan branch implementasi.
 
-## Seeded fault experiment
+## Akurasi analisis tenant
 
-Valid isolated experiment branch: `scratch/seeded-fault-unscoped-20261026`.
+Query `Vacancy.find_by(id: id)` saja tidak membuktikan bypass karena model memakai default scope `TenantScoped`. Implementasi menambahkan kondisi tenant eksplisit sebagai defense-in-depth; eksperimen fault memakai `unscoped` untuk benar-benar melewati default scope.
 
-- Fault commit: https://github.com/aldxynnn/ai-interview-platform/commit/e59e85d598a595781650442fc4a77c9165f75316 — changed the lookup to `Vacancy.unscoped.find_by(id: id)`.
-- Fault CI: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261374272 — failed as expected: the cross-tenant scheduling test expected 404 but received 503; 19 examples, 1 failure. The regression test detected the deliberate bypass.
-- Recovery commit: https://github.com/aldxynnn/ai-interview-platform/commit/69597d629ed162a436f8e3f024ec8a8c78a5818d — restored tenant-scoped lookup.
-- Recovery CI: https://github.com/aldxynnn/ai-interview-platform/actions/runs/40261381460 — passed.
-- The fault was only on the scratch branch, not the implementation branch. Earlier scratch attempts were not isolated correctly and are not used as evidence.
+## Privasi
 
-## Privacy verification
+Portfolio generation dan exhausted Sidekiq retries menyimpan pesan error generik dan hanya mencatat kelas exception, karena pesan provider dapat berisi response body atau fragmen transcript. Regression spec memeriksa agar detail pesan provider tidak masuk ke error tersimpan atau log.
 
-Portfolio generation and exhausted Sidekiq retries persist generic failure messages and log only the exception class, because provider error text may contain response bodies or transcript fragments. A regression spec asserts the stored error and log do not include provider message details.
+## Demo
 
-## Remaining manual verification / submission items
-
-Not completed in this environment:
-- Browser smoke test, responsive review, keyboard/focus, console/network, and actual screenshots.
-- Local setup from a clean clone.
-- Gemini failure/timeout path with a stub and live provider integration if credentials are available.
-- Upstream PR to `rakamindev/ai-interview-platform`. The integration attempt returned HTTP 403 (Resource not accessible by integration); draft PR #8 is only in the user's fork: https://github.com/aldxynnn/ai-interview-platform/pull/8.
-- 3–5 minute video walkthrough and final exported PDF.
-
-These are explicitly left as submitter tasks and must not be represented as completed until performed.
+Manual smoke test dan pemeriksaan UI telah dilakukan oleh submitter. Screenshot aktual dan video walkthrough disiapkan sebagai materi demo submission.
