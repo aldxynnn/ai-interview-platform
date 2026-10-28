@@ -72,7 +72,9 @@ module FitGap
 
         # A numeric AI rating without candidate-authored evidence is not enough
         # to claim that a skill was actually assessed.
-        candidate = nil if candidate && candidate[:evidence].empty?
+        candidate = nil if candidate &&
+                  candidate[:evidence].empty? &&
+                  !candidate[:overridden]
         required_level = requirement.expected_level
 
         if candidate
