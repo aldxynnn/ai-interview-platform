@@ -96,7 +96,7 @@ ActiveRecord::Schema[7.0].define(version: 2026_10_26_000000) do
     t.index ["portfolio_id", "vacancy_id"], name: "index_fit_gap_reports_on_portfolio_id_and_vacancy_id", unique: true
     t.index ["portfolio_id"], name: "index_fit_gap_reports_on_portfolio_id"
     t.index ["vacancy_id"], name: "index_fit_gap_reports_on_vacancy_id"
-    t.check_constraint "generation_status IN ('queued', 'generating', 'complete', 'failed', 'stale')", name: "chk_fit_gap_reports_generation_status"
+    t.check_constraint "generation_status::text = ANY (ARRAY['queued'::character varying, 'generating'::character varying, 'complete'::character varying, 'failed'::character varying, 'stale'::character varying]::text[])", name: "chk_fit_gap_reports_generation_status"
   end
 
   create_table "organizations", force: :cascade do |t|
